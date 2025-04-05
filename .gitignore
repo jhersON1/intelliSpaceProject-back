@@ -5,6 +5,10 @@
 
 package-lock.json
 
+# postgres
+postgres/
+.vscode/
+
 # Logs
 logs
 *.log
