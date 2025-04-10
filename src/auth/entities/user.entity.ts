@@ -3,18 +3,19 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   TableInheritance,
+  CreateDateColumn,
 } from 'typeorm';
 
-@Entity('user')
-@TableInheritance({ column: { type: 'varchar', name: 'discriminator' } }) // ✔ Se define el discriminador
+@Entity()
+@TableInheritance({ column: { type: 'varchar', name: 'type' } }) // Se define el discriminador
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column('text', { unique: true })
   email: string;
 
-  @Column()
+  @Column('text')
   password: string;
 
   @Column()
@@ -23,9 +24,12 @@ export class User {
   @Column()
   apellido: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn({
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   fechaRegistro: Date;
 
-  @Column({ type: 'enum', enum: ['CONSUMER', 'VENDOR'] }) // ✔ Opcional, porque el `discriminator` ya diferencia los tipos
+  @Column({ type: 'enum', enum: ['CONSUMER', 'VENDOR'] }) // Opcional, porque el `discriminator` ya diferencia los tipos
   rol: string;
 }

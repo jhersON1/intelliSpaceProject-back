@@ -8,5 +8,6 @@ import { Consumer, User, Vendor } from './entities';
   controllers: [AuthController],
   providers: [AuthService],
   imports: [TypeOrmModule.forFeature([User, Consumer, Vendor])],
+  exports: [TypeOrmModule],
 })
 export class AuthModule {}
