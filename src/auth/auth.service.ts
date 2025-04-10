@@ -1,9 +1,15 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Consumer, User, Vendor } from './entities';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto, UserRole } from './dto';
+import { CreateUserDto, LoginUserDto, UserRole } from './dto';
+import { JwtPayload } from './interfaces';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
@@ -14,6 +20,7 @@ export class AuthService {
     private readonly vendorRepository: Repository<Vendor>,
     @InjectRepository(Consumer)
     private readonly consumerRepository: Repository<Consumer>,
+    private readonly jwtService: JwtService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -32,15 +39,57 @@ export class AuthService {
     // Crear el usuario según el rol
     if (rol === UserRole.CONSUMER) {
       const consumer = await this.createConsumer(createUserDto, hashedPassword);
-      return this.parseUser(consumer);
+      return {
+        user: this.parseUser(consumer),
+        token: this.getJwtToken({ email: consumer.email, id: consumer.id }),
+      };
     }
 
     if (rol === UserRole.VENDOR) {
       const vendor = await this.createVendor(createUserDto, hashedPassword);
-      return this.parseUser(vendor);
+      return {
+        user: this.parseUser(vendor),
+        token: this.getJwtToken({ email: vendor.email, id: vendor.id }),
+      };
     }
 
     throw new BadRequestException(`Rol ${rol} no válido`);
+  }
+
+  async login(loginUserDto: LoginUserDto) {
+    const { password, email } = loginUserDto;
+
+    const user = await this.userRepository.findOne({
+      where: { email },
+      select: { email: true, password: true, id: true, nombre: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Credentials are not valid (email)');
+    }
+
+    if (!bcrypt.compareSync(password, user.password)) {
+      throw new UnauthorizedException('Credentials are not valid (password)');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      nombre: user.nombre,
+      token: this.getJwtToken({ email: user.email, id: user.id }),
+    };
+  }
+
+  checkAuthStatus(user: User) {
+    return {
+      ...this.parseUser(user),
+      token: this.getJwtToken({ email: user.email, id: user.id }),
+    };
+  }
+
+  private getJwtToken(payload: JwtPayload) {
+    const token = this.jwtService.sign(payload);
+    return token;
   }
 
   private parseUser(user: User) {
