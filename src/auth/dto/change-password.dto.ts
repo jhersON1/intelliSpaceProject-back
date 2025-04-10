@@ -6,10 +6,15 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class LoginUserDto {
+export class ChangePasswordDto {
   @IsString()
-  @IsEmail()
-  email: string;
+  @MinLength(6)
+  @MaxLength(50)
+  @Matches(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+    message:
+      'La contraseña debe tener una letra mayúscula, una minúscula y un número',
+  })
+  currentPassword: string;
 
   @IsString()
   @MinLength(6)
@@ -18,5 +23,5 @@ export class LoginUserDto {
     message:
       'La contraseña debe tener una letra mayúscula, una minúscula y un número',
   })
-  password: string;
+  newPassword: string;
 }
