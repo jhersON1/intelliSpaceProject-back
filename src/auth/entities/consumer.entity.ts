@@ -1,4 +1,4 @@
-import { ChildEntity, Column } from 'typeorm';
+import { ChildEntity, Column, Entity } from 'typeorm';
 import { User } from './user.entity';
 
 @ChildEntity()
