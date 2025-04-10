@@ -1,13 +1,19 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Consumer, User, Vendor } from './entities';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto, LoginUserDto, UserRole } from './dto';
+import {
+  ChangePasswordDto,
+  CreateUserDto,
+  LoginUserDto,
+  UserRole,
+} from './dto';
 import { JwtPayload } from './interfaces';
 import { JwtService } from '@nestjs/jwt';
 
@@ -78,6 +84,23 @@ export class AuthService {
       nombre: user.nombre,
       token: this.getJwtToken({ email: user.email, id: user.id }),
     };
+  }
+
+  async changePassword(id: string, changePasswordDto: ChangePasswordDto) {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const { currentPassword, newPassword } = changePasswordDto;
+
+    if (!bcrypt.compareSync(currentPassword, user.password)) {
+      throw new UnauthorizedException('Credentials are not valid (password)');
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.userRepository.update(id, { password: hashedPassword });
+    return { message: 'Contraseña cambiada con exito' };
   }
 
   checkAuthStatus(user: User) {
