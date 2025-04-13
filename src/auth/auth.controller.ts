@@ -10,7 +10,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateUserDto, LoginUserDto } from './dto';
+import { CreateUserDto, LoginUserDto, UpdateUserDto } from './dto';
 import { Auth, GetUser } from './decorators';
 import { User } from './entities';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -33,6 +33,12 @@ export class AuthController {
   @Auth()
   checkAuthStatus(@GetUser() user: User) {
     return this.authService.checkAuthStatus(user);
+  }
+
+  @Patch('update-user')
+  @Auth()
+  update(@GetUser() user: User, @Body() updateUserDto: UpdateUserDto) {
+    return this.authService.update(user.id, updateUserDto);
   }
 
   @Put('change-password')

@@ -16,6 +16,7 @@ import {
 } from './dto';
 import { JwtPayload } from './interfaces';
 import { JwtService } from '@nestjs/jwt';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -108,6 +109,16 @@ export class AuthService {
       ...this.parseUser(user),
       token: this.getJwtToken({ email: user.email, id: user.id }),
     };
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto) {
+    const userUpdate = await this.userRepository.preload({
+      id,
+      ...updateUserDto,
+    });
+    console.log(userUpdate);
+    const user = await this.userRepository.update(id, { ...updateUserDto });
+    return user;
   }
 
   private getJwtToken(payload: JwtPayload) {
