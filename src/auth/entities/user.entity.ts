@@ -1,13 +1,15 @@
+import { insertDateRegistration } from '../../utils/insert-date';
 import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
   TableInheritance,
   CreateDateColumn,
+  BeforeInsert,
 } from 'typeorm';
 
 @Entity()
-@TableInheritance({ column: { type: 'varchar', name: 'type' } }) // Se define el discriminador
+@TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -26,10 +28,16 @@ export class User {
 
   @CreateDateColumn({
     type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP',
+    // default: () => 'CURRENT_TIMESTAMP',
   })
   fechaRegistro: Date;
 
   @Column({ type: 'enum', enum: ['CONSUMER', 'VENDOR'] }) // Opcional, porque el `discriminator` ya diferencia los tipos
   rol: string;
+
+  @BeforeInsert()
+  insertDateRegistrationUser() {
+    const date = insertDateRegistration();
+    this.fechaRegistro = date;
+  }
 }
