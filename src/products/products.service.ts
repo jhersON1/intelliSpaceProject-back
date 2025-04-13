@@ -1,26 +1,140 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Product } from './entities/product.entity';
+import { Repository } from 'typeorm';
+import { Vendor } from '../auth/entities/vendor.entity';
 
 @Injectable()
 export class ProductsService {
-  create(createProductDto: CreateProductDto) {
-    return 'This action adds a new product';
+  constructor(
+    @InjectRepository(Vendor)
+    private readonly vendorRepository: Repository<Vendor>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
+  ) {}
+
+  async create(userId: string, createProductDto: CreateProductDto) {
+    try {
+      const vendor = await this.vendorRepository.findOne({
+        where: { id: userId },
+      });
+
+      if (!vendor) {
+        throw new BadRequestException('El usuario no es un vendedor válido');
+      }
+
+      const product = this.productRepository.create({
+        ...createProductDto,
+        vendor: vendor,
+      });
+
+      const savedProduct = await this.productRepository.save(product);
+
+      const { vendor: _, ...productDelVendor } = savedProduct;
+
+      return productDelVendor;
+    } catch (error) {
+      this.handleExceptions(error);
+    }
   }
 
-  findAll() {
-    return `This action returns all products`;
+  async findAll() {
+    return await this.productRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
+  async findAllProductsVendor(id: string) {
+    // Buscar todos los productos donde el vendor.id coincida con el id proporcionado
+    const products = await this.productRepository.find({
+      where: {
+        vendor: { id },
+      },
+    });
+    return products;
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
+  async findOne(id: string) {
+    const product = await this.productRepository.findOne({
+      where: { id },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Producto con ID: ${id} no encontrado`);
+    }
+
+    return product;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} product`;
+  async update(
+    idVendor: string,
+    idProduct: string,
+    updateProductDto: UpdateProductDto,
+  ) {
+    const product = await this.productRepository.findOne({
+      where: {
+        id: idProduct,
+        vendor: { id: idVendor },
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException(
+        `Producto con ID: ${idProduct} no encontrado o no pertenece a este vendedor`,
+      );
+    }
+
+    const updatedProduct = await this.productRepository.preload({
+      id: idProduct,
+      ...updateProductDto,
+    });
+
+    if (!updatedProduct) {
+      throw new NotFoundException(
+        `Producto con ID: ${idProduct} no encontrado después de preload`,
+      );
+    }
+
+    await this.productRepository.save(updatedProduct);
+
+    const { vendor, ...result } = updatedProduct;
+    console.log(updateProductDto);
+
+    return result;
+  }
+
+  async remove(id: string) {
+    const product = await this.productRepository.findOne({
+      where: { id },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Producto con ID: ${id} no encontrado`);
+    }
+
+    const deletedProduct = { ...product };
+
+    await this.productRepository.remove(product);
+
+    const { titulo } = deletedProduct;
+
+    return { message: `Producto ${titulo} eliminado con exito` };
+  }
+
+  private handleExceptions(error: any) {
+    if (error.code === '23505') {
+      throw new BadRequestException(error.detail);
+    }
+
+    console.log(error);
+
+    throw new InternalServerErrorException(
+      'Error inesperado, revisar logs del servidor',
+    );
   }
 }

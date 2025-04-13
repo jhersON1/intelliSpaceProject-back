@@ -1,9 +1,11 @@
 import { insertDateRegistration } from 'src/utils/insert-date';
+import { Vendor } from '../../auth/entities/vendor.entity';
 import {
   BeforeInsert,
   Column,
   CreateDateColumn,
   Entity,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -21,7 +23,7 @@ export class Product {
   @Column('json')
   dimensiones: object;
 
-  @Column()
+  @Column('float')
   peso: number;
 
   @Column('text', { nullable: true })
@@ -43,6 +45,11 @@ export class Product {
 
   @Column('text', { array: true, default: [] })
   palabrasClave: string[];
+
+  @ManyToOne(() => Vendor, (vendor) => vendor.products, {
+    onDelete: 'CASCADE',
+  })
+  vendor: Vendor;
 
   @BeforeInsert()
   insertDateRegistrationProduct() {
