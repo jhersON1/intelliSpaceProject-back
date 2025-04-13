@@ -116,9 +116,13 @@ export class AuthService {
       id,
       ...updateUserDto,
     });
-    console.log(userUpdate);
-    const user = await this.userRepository.update(id, { ...updateUserDto });
-    return user;
+
+    if (!userUpdate) {
+      throw new NotFoundException(`Usuario con ID: ${id} no encontrado`);
+    }
+    const savedUser = await this.userRepository.save(userUpdate);
+
+    return savedUser;
   }
 
   private getJwtToken(payload: JwtPayload) {
@@ -148,13 +152,15 @@ export class AuthService {
   private async validateDataVendor(createVendorDto: CreateUserDto) {
     const { nombreNegocio } = createVendorDto;
 
+    const nombreNegocioTrim = nombreNegocio.trim();
+
     const existinNegocio = await this.vendorRepository.findOne({
-      where: { nombreNegocio },
+      where: { nombreNegocio: nombreNegocioTrim },
     });
 
     if (existinNegocio) {
       throw new BadRequestException(
-        `La Empresa o Negocio con nombre: ${nombreNegocio} ya existe`,
+        `La Empresa o Negocio con nombre: ${nombreNegocioTrim} ya existe`,
       );
     }
     return true;

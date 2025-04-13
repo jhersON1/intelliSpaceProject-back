@@ -1,5 +1,6 @@
-import { ChildEntity, Column, Entity } from 'typeorm';
+import { ChildEntity, Column, Entity, OneToMany } from 'typeorm';
 import { User } from './user.entity';
+import { Product } from '../../products/entities/product.entity';
 
 @ChildEntity()
 export class Vendor extends User {
@@ -20,4 +21,7 @@ export class Vendor extends User {
 
   @Column({ type: 'enum', enum: ['INDIVIDUAL', 'EMPRESA'] })
   tipoVendedor: string;
+
+  @OneToMany(() => Product, (product) => product.vendor)
+  products: Product[];
 }
