@@ -1,11 +1,8 @@
-version: '3'
-
 services:
   db:
-    image: postgres:14.3
-    restart: always
+    image: postgres:latest
     ports:
-      - "5442:5432"
+      - "5432:5432"
     environment:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
@@ -13,4 +10,12 @@ services:
       - PGTZ=America/La_Paz
     container_name: intellispacedb
     volumes:
-      - ./postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - postgres_network
+
+volumes:
+  postgres_data:
+
+networks:
+  postgres_network:
