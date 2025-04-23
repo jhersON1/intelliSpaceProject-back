@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -15,6 +16,7 @@ import { Auth } from '../auth/decorators/auth.decorator';
 import { ValidRoles } from '../auth/interfaces/valid-roles.interface';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from '../auth/entities/user.entity';
+import { PaginationDto } from 'src/common/dtos/pagination.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -27,14 +29,17 @@ export class ProductsController {
   }
 
   @Get('consumer-products')
-  findAll() {
-    return this.productsService.findAll();
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.productsService.findAll(paginationDto);
   }
 
   @Get('vendor-products')
   @Auth(ValidRoles.VENDOR)
-  findAllProductsVendor(@GetUser() user: User) {
-    return this.productsService.findAllProductsVendor(user.id);
+  findAllProductsVendor(
+    @GetUser() user: User,
+    @Query() paginationDto: PaginationDto,
+  ) {
+    return this.productsService.findAllProductsVendor(user.id, paginationDto);
   }
 
   @Get(':id')

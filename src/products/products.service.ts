@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { Repository } from 'typeorm';
 import { Vendor } from '../auth/entities/vendor.entity';
+import { PaginationDto } from '../common/dtos/pagination.dto';
 
 @Injectable()
 export class ProductsService {
@@ -45,13 +46,21 @@ export class ProductsService {
     }
   }
 
-  async findAll() {
-    return await this.productRepository.find();
+  async findAll(paginationDto: PaginationDto) {
+    const { limit = 10, offset = 0 } = paginationDto;
+    const products = await this.productRepository.find({
+      take: limit,
+      skip: offset,
+    });
+    return products;
   }
 
-  async findAllProductsVendor(id: string) {
+  async findAllProductsVendor(id: string, paginationDto: PaginationDto) {
     // Buscar todos los productos donde el vendor.id coincida con el id proporcionado
+    const { limit = 10, offset = 0 } = paginationDto;
     const products = await this.productRepository.find({
+      take: limit,
+      skip: offset,
       where: {
         vendor: { id },
       },
