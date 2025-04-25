@@ -15,36 +15,36 @@ export class Product {
   id: string;
 
   @Column('text')
-  titulo: string;
+  title: string;
 
   @Column('text', { nullable: true })
-  descripcion: string;
+  description: string;
 
   @Column('json')
-  dimensiones: object;
+  dimensions: object;
 
   @Column('float')
-  peso: number;
+  weight: number;
 
   @Column('text', { nullable: true })
   material: string;
 
   @Column('float', { default: 0 })
-  precio: number;
+  price: number;
 
   @Column('int', { default: 0 })
   stock: number;
 
   @Column({ type: 'enum', enum: ['Agotado', 'Disponible'] })
-  estado: string;
+  state: string;
 
   @CreateDateColumn({
     type: 'timestamptz',
   })
-  fechaPublicacion: Date;
+  datePublication: Date;
 
   @Column('text', { array: true, default: [] })
-  palabrasClave: string[];
+  keywords: string[];
 
   @ManyToOne(() => Vendor, (vendor) => vendor.products, {
     onDelete: 'CASCADE',
@@ -54,6 +54,6 @@ export class Product {
   @BeforeInsert()
   insertDateRegistrationProduct() {
     const date = insertDateRegistration();
-    this.fechaPublicacion = date;
+    this.datePublication = date;
   }
 }

@@ -21,16 +21,16 @@ export class User {
   password: string;
 
   @Column()
-  nombre: string;
+  name: string;
 
   @Column()
-  apellido: string;
+  lastname: string;
 
   @CreateDateColumn({
     type: 'timestamp',
     // default: () => 'CURRENT_TIMESTAMP',
   })
-  fechaRegistro: Date;
+  dateRegister: Date;
 
   @Column({ type: 'enum', enum: ['CONSUMER', 'VENDOR'] }) // Opcional, porque el `discriminator` ya diferencia los tipos
   rol: string;
@@ -38,6 +38,6 @@ export class User {
   @BeforeInsert()
   insertDateRegistrationUser() {
     const date = insertDateRegistration();
-    this.fechaRegistro = date;
+    this.dateRegister = date;
   }
 }

@@ -5,22 +5,22 @@ import { Product } from '../../products/entities/product.entity';
 @ChildEntity()
 export class Vendor extends User {
   @Column('text', { unique: true })
-  nombreNegocio: string;
+  nameBusiness: string;
 
   @Column('text', { nullable: true })
-  descripcion: string;
+  description: string;
 
   @Column('text')
   logo: string;
 
   @Column('text', { array: true })
-  documentosVerificacion: string[];
+  verificationDocuments: string[];
 
   @Column({ type: 'json' })
-  horarioAtencion: object;
+  attentionHours: object;
 
   @Column({ type: 'enum', enum: ['INDIVIDUAL', 'EMPRESA'] })
-  tipoVendedor: string;
+  typeVendor: string;
 
   @OneToMany(() => Product, (product) => product.vendor)
   products: Product[];

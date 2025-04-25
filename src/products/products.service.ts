@@ -130,9 +130,9 @@ export class ProductsService {
 
     await this.productRepository.remove(product);
 
-    const { titulo } = deletedProduct;
+    const { title } = deletedProduct;
 
-    return { message: `Producto ${titulo} eliminado con exito` };
+    return { message: `Producto ${title} eliminado con exito` };
   }
 
   private handleExceptions(error: any) {

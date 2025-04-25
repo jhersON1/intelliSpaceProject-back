@@ -68,7 +68,7 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({
       where: { email },
-      select: { email: true, password: true, id: true, nombre: true },
+      select: { email: true, password: true, id: true, name: true },
     });
 
     if (!user) {
@@ -82,7 +82,7 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
-      nombre: user.nombre,
+      name: user.name,
       token: this.getJwtToken({ email: user.email, id: user.id }),
     };
   }
@@ -141,21 +141,21 @@ export class AuthService {
 
     const vendor = this.vendorRepository.create({
       ...createVendorDto,
-      nombreNegocio: createVendorDto.nombreNegocio?.trim(),
+      nameBusiness: createVendorDto.nameBusiness?.trim(),
       password: password,
-      documentosVerificacion: createVendorDto.documentosVerificacion,
+      verificationDocuments: createVendorDto.verificationDocuments,
     });
 
     return await this.vendorRepository.save(vendor);
   }
 
   private async validateDataVendor(createVendorDto: CreateUserDto) {
-    const { nombreNegocio } = createVendorDto;
+    const { nameBusiness } = createVendorDto;
 
-    const nombreNegocioTrim = nombreNegocio.trim();
+    const nombreNegocioTrim = nameBusiness.trim();
 
     const existinNegocio = await this.vendorRepository.findOne({
-      where: { nombreNegocio: nombreNegocioTrim },
+      where: { nameBusiness: nombreNegocioTrim },
     });
 
     if (existinNegocio) {
@@ -170,17 +170,13 @@ export class AuthService {
     createConsumerDto: CreateUserDto,
     password: string,
   ) {
-    const {
-      direccion,
-      preferencias,
-      historialBusquedas = [],
-    } = createConsumerDto;
+    const { address, preferences, searchsHistory = [] } = createConsumerDto;
 
     const consumer = this.consumerRepository.create({
       ...createConsumerDto,
       password: password,
-      historialBusquedas,
-      preferencias: preferencias || {},
+      searchsHistory,
+      preferences: preferences || {},
     });
     return await this.consumerRepository.save(consumer);
   }

@@ -39,12 +39,12 @@ export class CreateUserDto {
   @IsString()
   @MinLength(1)
   @IsNotEmpty()
-  nombre: string;
+  name: string;
 
   @IsString()
   @MinLength(1)
   @IsNotEmpty()
-  apellido: string;
+  lastname: string;
 
   @IsEnum(UserRole)
   @IsNotEmpty()
@@ -54,28 +54,28 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   @ValidateIf((o) => o.rol === UserRole.CONSUMER)
-  direccion: string;
+  address: string;
 
   @IsObject()
   @IsOptional()
   @ValidateIf((o) => o.rol === UserRole.CONSUMER)
-  preferencias?: Record<string, any>;
+  preferences?: Record<string, any>;
 
   @IsString({ each: true })
   @IsOptional()
   @ValidateIf((o) => o.rol === UserRole.CONSUMER)
-  historialBusquedas?: string[];
+  searchsHistory?: string[];
 
   // Campos específicos de Vendor
   @IsString()
   @IsNotEmpty()
   @ValidateIf((o) => o.rol === UserRole.VENDOR)
-  nombreNegocio: string;
+  nameBusiness: string;
 
   @IsString()
   @IsOptional()
   @ValidateIf((o) => o.rol === UserRole.VENDOR)
-  descripcion?: string;
+  description?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -85,15 +85,15 @@ export class CreateUserDto {
   @IsString({ each: true })
   @IsOptional()
   @ValidateIf((o) => o.rol === UserRole.VENDOR)
-  documentosVerificacion?: string[];
+  verificationDocuments?: string[];
 
   @IsObject()
   @IsNotEmpty()
   @ValidateIf((o) => o.rol === UserRole.VENDOR)
-  horarioAtencion: Record<string, any>;
+  attentionHours: Record<string, any>;
 
   @IsEnum(TipoVendedor)
   @IsNotEmpty()
   @ValidateIf((o) => o.rol === UserRole.VENDOR)
-  tipoVendedor: TipoVendedor;
+  typeVendedor: TipoVendedor;
 }

@@ -23,22 +23,22 @@ export class CreateProductDto {
   @IsString({ message: 'El título debe ser un texto' })
   @IsNotEmpty({ message: 'El título es requerido' })
   @MinLength(2, { message: 'El título debe tener al menos 2 caracteres' })
-  titulo: string;
+  title: string;
 
   @IsOptional()
   @IsString({ message: 'La descripción debe ser un texto' })
   @MinLength(10, {
     message: 'La descripción debe tener al menos 10 caracteres',
   })
-  descripcion?: string;
+  description?: string;
 
   @IsOptional()
   @IsObject({ message: 'Las dimensiones deben ser un objeto válido' })
-  dimensiones?: object;
+  dimensions?: object;
 
   @IsNumber({}, { message: 'El peso debe ser un número válido' })
   @Min(0, { message: 'El peso debe ser mayor o igual a 0' })
-  peso: number;
+  weight: number;
 
   @IsOptional()
   @IsString({ message: 'El material debe ser un texto' })
@@ -47,7 +47,7 @@ export class CreateProductDto {
   @IsNumber()
   @IsPositive()
   @IsOptional()
-  precio?: number;
+  price?: number;
 
   @IsInt()
   @IsPositive()
@@ -57,10 +57,10 @@ export class CreateProductDto {
   @IsEnum(ProductStatus, {
     message: 'El estado debe ser "Agotado" o "Disponible"',
   })
-  estado: ProductStatus;
+  state: ProductStatus;
 
   @IsOptional()
   @IsArray({ message: 'Las palabras clave deben ser un arreglo de textos' })
   @IsString({ each: true, message: 'Cada palabra clave debe ser un texto' })
-  palabrasClave?: string[];
+  keywords?: string[];
 }

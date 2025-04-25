@@ -4,11 +4,11 @@ import { User } from './user.entity';
 @ChildEntity()
 export class Consumer extends User {
   @Column('text', { nullable: true })
-  direccion: string;
+  address: string;
 
   @Column({ type: 'json' })
-  preferencias: object;
+  preferences: object;
 
   @Column('text', { array: true })
-  historialBusquedas: string[];
+  searchsHistory: string[];
 }
