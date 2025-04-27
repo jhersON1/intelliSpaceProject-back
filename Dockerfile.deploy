@@ -1,0 +1,30 @@
+# Etapa de construcción
+FROM node:18-alpine AS build
+
+WORKDIR /app
+
+# Copia los archivos de dependencias
+COPY package*.json ./
+RUN npm ci
+
+# Copia el resto del código
+COPY . .
+
+# Construye la aplicación
+RUN npm run build
+
+# Etapa de producción
+FROM node:18-alpine AS production
+
+WORKDIR /app
+
+# Copia solo los archivos necesarios desde la etapa de construcción
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+
+# Expone el puerto en el que se ejecuta la aplicación
+EXPOSE ${PORT}
+
+# Comando para iniciar la aplicación
+CMD ["npm", "run", "start:prod"]

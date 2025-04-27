@@ -95,5 +95,5 @@ export class CreateUserDto {
   @IsEnum(TipoVendedor)
   @IsNotEmpty()
   @ValidateIf((o) => o.rol === UserRole.VENDOR)
-  typeVendedor: TipoVendedor;
+  typeVendor: TipoVendedor;
 }

@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:latest
+    ports:
+      - "5442:5432"
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - TZ=America/La_Paz
+      - PGTZ=America/La_Paz
+    container_name: intellispacedb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - postgres_network
+    restart: always
+  
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.deploy
+      target: production
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - PORT=${PORT}
+      - JWT_SECRET=${JWT_SECRET}
+      - TZ=America/La_Paz
+    container_name: intellispace_api
+    depends_on:
+      - db
+    networks:
+      - postgres_network
+    restart: always
+
+volumes:
+  postgres_data:
+
+networks:
+  postgres_network:
