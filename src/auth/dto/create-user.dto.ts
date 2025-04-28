@@ -78,9 +78,9 @@ export class CreateUserDto {
   description?: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ValidateIf((o) => o.rol === UserRole.VENDOR)
-  logo: string;
+  logo?: string;
 
   @IsString({ each: true })
   @IsOptional()

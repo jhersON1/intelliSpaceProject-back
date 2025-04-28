@@ -11,7 +11,7 @@ export class Vendor extends User {
   description: string;
 
   @Column('text')
-  logo: string;
+  logo?: string;
 
   @Column('text', { array: true })
   verificationDocuments: string[];
