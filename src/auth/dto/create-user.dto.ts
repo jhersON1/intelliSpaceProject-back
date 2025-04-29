@@ -17,7 +17,7 @@ export enum UserRole {
   VENDOR = 'VENDOR',
 }
 
-export enum TipoVendedor {
+export enum TypeVendor {
   INDIVIDUAL = 'INDIVIDUAL',
   EMPRESA = 'EMPRESA',
 }
@@ -88,12 +88,12 @@ export class CreateUserDto {
   verificationDocuments?: string[];
 
   @IsObject()
-  @IsNotEmpty()
+  @IsOptional()
   @ValidateIf((o) => o.rol === UserRole.VENDOR)
-  attentionHours: Record<string, any>;
+  attentionHours?: Record<string, any>;
 
-  @IsEnum(TipoVendedor)
+  @IsEnum(TypeVendor)
   @IsNotEmpty()
   @ValidateIf((o) => o.rol === UserRole.VENDOR)
-  typeVendor: TipoVendedor;
+  typeVendor: TypeVendor;
 }

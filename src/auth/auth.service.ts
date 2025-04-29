@@ -48,7 +48,7 @@ export class AuthService {
       const consumer = await this.createConsumer(createUserDto, hashedPassword);
       return {
         user: this.parseUser(consumer),
-        token: this.getJwtToken({ email: consumer.email, id: consumer.id }),
+        token: this.getJwtToken({ email: consumer.email, id: consumer.id, rol: consumer.rol }),
       };
     }
 
@@ -56,7 +56,7 @@ export class AuthService {
       const vendor = await this.createVendor(createUserDto, hashedPassword);
       return {
         user: this.parseUser(vendor),
-        token: this.getJwtToken({ email: vendor.email, id: vendor.id }),
+        token: this.getJwtToken({ email: vendor.email, id: vendor.id, rol: vendor.rol }),
       };
     }
 
@@ -83,7 +83,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       name: user.name,
-      token: this.getJwtToken({ email: user.email, id: user.id }),
+      token: this.getJwtToken({ email: user.email, id: user.id, rol: user.rol }),
     };
   }
 
@@ -107,7 +107,7 @@ export class AuthService {
   checkAuthStatus(user: User) {
     return {
       ...this.parseUser(user),
-      token: this.getJwtToken({ email: user.email, id: user.id }),
+      token: this.getJwtToken({ email: user.email, id: user.id, rol: user.rol }),
     };
   }
 
