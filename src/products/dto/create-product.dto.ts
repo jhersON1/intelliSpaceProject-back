@@ -14,7 +14,7 @@ import {
   IsInt,
 } from 'class-validator';
 
-// Enum para los estados válidos
+
 enum ProductStatus {
   AGOTADO = 'Agotado',
   DISPONIBLE = 'Disponible',
