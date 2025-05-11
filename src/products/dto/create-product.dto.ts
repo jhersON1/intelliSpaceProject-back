@@ -12,13 +12,14 @@ import {
   ArrayMinSize,
   IsPositive,
   IsInt,
+  IsUUID,
 } from 'class-validator';
-
 
 enum ProductStatus {
   AGOTADO = 'Agotado',
   DISPONIBLE = 'Disponible',
 }
+
 export class CreateProductDto {
   @IsString({ message: 'El título debe ser un texto' })
   @IsNotEmpty({ message: 'El título es requerido' })
@@ -63,4 +64,9 @@ export class CreateProductDto {
   @IsArray({ message: 'Las palabras clave deben ser un arreglo de textos' })
   @IsString({ each: true, message: 'Cada palabra clave debe ser un texto' })
   keywords?: string[];
+
+  @IsUUID(undefined, {
+    message: 'El ID de la categoría debe ser un UUID válido',
+  })
+  idCategory: string;
 }

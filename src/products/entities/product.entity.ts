@@ -1,5 +1,6 @@
 import { insertDateRegistration } from 'src/utils/insert-date';
 import { Vendor } from '../../auth/entities/vendor.entity';
+import { Category } from '../../categories/entities/category.entity';
 import {
   BeforeInsert,
   Column,
@@ -50,6 +51,11 @@ export class Product {
     onDelete: 'CASCADE',
   })
   vendor: Vendor;
+
+  @ManyToOne(() => Category, (category) => category.products, {
+    onDelete: 'CASCADE',
+  })
+  category: Category;
 
   @BeforeInsert()
   insertDateRegistrationProduct() {
