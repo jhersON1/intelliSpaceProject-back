@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { Repository } from 'typeorm';
 import { Vendor } from '../auth/entities/vendor.entity';
+import { Category } from '../categories/entities/category.entity';
 import { PaginationDto } from '../common/dtos/pagination.dto';
 
 @Injectable()
@@ -19,6 +20,8 @@ export class ProductsService {
     private readonly vendorRepository: Repository<Vendor>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    @InjectRepository(Category)
+    private readonly categoryRepository: Repository<Category>,
   ) {}
 
   async create(userId: string, createProductDto: CreateProductDto) {
@@ -31,9 +34,22 @@ export class ProductsService {
         throw new BadRequestException('El usuario no es un vendedor válido');
       }
 
+      // Buscar y validar la categoría
+      const category = await this.categoryRepository.findOne({
+        where: { id: createProductDto.idCategory },
+      });
+
+      if (!category) {
+        throw new BadRequestException(
+          `La categoría con ID: ${createProductDto.idCategory} no existe`,
+        );
+      }
+
+      // Crear el producto con vendor y categoría
       const product = this.productRepository.create({
         ...createProductDto,
         vendor: vendor,
+        category: category,
       });
 
       const savedProduct = await this.productRepository.save(product);
@@ -51,12 +67,12 @@ export class ProductsService {
     const products = await this.productRepository.find({
       take: limit,
       skip: offset,
+      relations: ['category'], // Incluir la categoría en la respuesta
     });
     return products;
   }
 
   async findAllProductsVendor(id: string, paginationDto: PaginationDto) {
-    // Buscar todos los productos donde el vendor.id coincida con el id proporcionado
     const { limit = 10, offset = 0 } = paginationDto;
     const products = await this.productRepository.find({
       take: limit,
@@ -64,6 +80,7 @@ export class ProductsService {
       where: {
         vendor: { id },
       },
+      relations: ['category'], // Incluir la categoría en la respuesta
     });
     return products;
   }
@@ -71,6 +88,7 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.productRepository.findOne({
       where: { id },
+      relations: ['category', 'vendor'], // Incluir categoría y vendor
     });
 
     if (!product) {
@@ -98,9 +116,24 @@ export class ProductsService {
       );
     }
 
+    // Si se está actualizando la categoría, validarla
+    let category;
+    if (updateProductDto.idCategory) {
+      category = await this.categoryRepository.findOne({
+        where: { id: updateProductDto.idCategory },
+      });
+
+      if (!category) {
+        throw new BadRequestException(
+          `La categoría con ID: ${updateProductDto.idCategory} no existe`,
+        );
+      }
+    }
+
     const updatedProduct = await this.productRepository.preload({
       id: idProduct,
       ...updateProductDto,
+      category: category || product.category, // Mantener la categoría actual si no se actualiza
     });
 
     if (!updatedProduct) {

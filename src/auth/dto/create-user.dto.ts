@@ -66,6 +66,11 @@ export class CreateUserDto {
   @ValidateIf((o) => o.rol === UserRole.CONSUMER)
   searchsHistory?: string[];
 
+  @IsString()
+  @IsOptional()
+  @ValidateIf((o) => o.rol === UserRole.CONSUMER)
+  avatar?: string;
+
   // Campos específicos de Vendor
   @IsString()
   @IsNotEmpty()
