@@ -11,4 +11,7 @@ export class Consumer extends User {
 
   @Column('text', { array: true })
   searchsHistory: string[];
+
+  @Column('text', { nullable: true })
+  avatar?: string;
 }
