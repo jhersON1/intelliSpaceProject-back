@@ -6,6 +6,7 @@ import { CommonModule } from './common/common.module';
 import { ProductsModule } from './products/products.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ConnectionCloudinaryModule } from './connection-cloudinary/connection-cloudinary.module';
+import { VisualRepresentationModule } from './visual-representation/visual-representation.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ConnectionCloudinaryModule } from './connection-cloudinary/connection-c
     ProductsModule,
     CategoriesModule,
     ConnectionCloudinaryModule,
+    VisualRepresentationModule,
   ],
   controllers: [],
   providers: [],

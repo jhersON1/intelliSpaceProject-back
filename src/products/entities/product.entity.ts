@@ -1,3 +1,4 @@
+import { VisualRepresentation } from './../../visual-representation/entities/visual-representation.entity';
 import { insertDateRegistration } from 'src/utils/insert-date';
 import { Vendor } from '../../auth/entities/vendor.entity';
 import { Category } from '../../categories/entities/category.entity';
@@ -7,6 +8,7 @@ import {
   CreateDateColumn,
   Entity,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -56,6 +58,12 @@ export class Product {
     onDelete: 'CASCADE',
   })
   category: Category;
+
+  @OneToMany(
+    () => VisualRepresentation,
+    (VisualRepresentation) => VisualRepresentation.product,
+  )
+  visualRepresentations: VisualRepresentation[];
 
   @BeforeInsert()
   insertDateRegistrationProduct() {
