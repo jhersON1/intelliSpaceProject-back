@@ -6,10 +6,8 @@ import {
   IsEnum,
   IsArray,
   IsObject,
-  ValidateNested,
   IsOptional,
   MinLength,
-  ArrayMinSize,
   IsPositive,
   IsInt,
   IsUUID,
@@ -65,8 +63,10 @@ export class CreateProductDto {
   @IsString({ each: true, message: 'Cada palabra clave debe ser un texto' })
   keywords?: string[];
 
+  @IsArray({ message: 'Debe ser un array de identificadores' })
   @IsUUID(undefined, {
-    message: 'El ID de la categoría debe ser un UUID válido',
+    each: true,
+    message: 'Cada ID de categoría debe ser un UUID válido'
   })
-  idCategory: string;
+  idCategory: string[];
 }

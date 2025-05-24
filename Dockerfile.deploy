@@ -1,5 +1,5 @@
 # Etapa de construcción
-FROM node:18-alpine AS build
+FROM node:23-slim AS build
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY . .
 RUN npm run build
 
 # Etapa de producción
-FROM node:18-alpine AS production
+FROM node:23-slim AS production
 
 WORKDIR /app
 

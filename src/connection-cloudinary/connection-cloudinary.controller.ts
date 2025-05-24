@@ -89,7 +89,6 @@ export class ConnectionCloudinaryController {
   @Post('upload-multiple')
   @UseInterceptors(FilesInterceptor('files'))
   async uploadMultipleImages(@UploadedFiles() files: Express.Multer.File[]) {
-    console.log("LLEGAAAAAAAAA")
     if (!files || files.length === 0) {
       return { images: [] }; // Retorna un JSON vacío si no hay archivos
     }
