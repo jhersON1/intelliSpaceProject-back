@@ -7,6 +7,8 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -54,10 +56,13 @@ export class Product {
   })
   vendor: Vendor;
 
-  @ManyToOne(() => Category, (category) => category.products, {
-    onDelete: 'CASCADE',
+  @ManyToMany(() => Category)
+  @JoinTable({
+    name: 'product_categories',
+    joinColumn: { name: 'productId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'categoryId', referencedColumnName: 'id' }
   })
-  category: Category;
+  categories: Category[];
 
   @OneToMany(
     () => VisualRepresentation,

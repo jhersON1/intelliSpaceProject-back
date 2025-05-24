@@ -35,7 +35,7 @@ export class Category {
   level: number;
 
   // Relaciones
-  @OneToMany(() => Product, (product) => product.category)
+  @OneToMany(() => Product, (product) => product.categories)
   products: Product[];
 
   @TreeParent()

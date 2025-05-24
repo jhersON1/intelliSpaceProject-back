@@ -35,13 +35,17 @@ export class ProductsService {
       }
 
       // Buscar y validar la categoría
+      const categoryId = Array.isArray(createProductDto.idCategory) 
+        ? createProductDto.idCategory[0] 
+        : createProductDto.idCategory;
+        
       const category = await this.categoryRepository.findOne({
-        where: { id: createProductDto.idCategory },
+        where: { id: categoryId },
       });
 
       if (!category) {
         throw new BadRequestException(
-          `La categoría con ID: ${createProductDto.idCategory} no existe`,
+          `La categoría con ID: ${categoryId} no existe`,
         );
       }
 
@@ -49,7 +53,7 @@ export class ProductsService {
       const product = this.productRepository.create({
         ...createProductDto,
         vendor: vendor,
-        category: category,
+        categories: [category],
       });
 
       const savedProduct = await this.productRepository.save(product);
@@ -67,7 +71,7 @@ export class ProductsService {
     const products = await this.productRepository.find({
       take: limit,
       skip: offset,
-      relations: ['category'], // Incluir la categoría en la respuesta
+      relations: ['categories'], // Incluir las categorías en la respuesta
     });
     return products;
   }
@@ -80,7 +84,7 @@ export class ProductsService {
       where: {
         vendor: { id },
       },
-      relations: ['category'], // Incluir la categoría en la respuesta
+      relations: ['categories'], // Incluir las categorías en la respuesta
     });
     return products;
   }
@@ -88,7 +92,7 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['category', 'vendor'], // Incluir categoría y vendor
+      relations: ['categories', 'vendor'], // Incluir categorías y vendor
     });
 
     if (!product) {
@@ -119,13 +123,17 @@ export class ProductsService {
     // Si se está actualizando la categoría, validarla
     let category;
     if (updateProductDto.idCategory) {
+      const categoryId = Array.isArray(updateProductDto.idCategory) 
+        ? updateProductDto.idCategory[0] 
+        : updateProductDto.idCategory;
+        
       category = await this.categoryRepository.findOne({
-        where: { id: updateProductDto.idCategory },
+        where: { id: categoryId },
       });
 
       if (!category) {
         throw new BadRequestException(
-          `La categoría con ID: ${updateProductDto.idCategory} no existe`,
+          `La categoría con ID: ${categoryId} no existe`,
         );
       }
     }
@@ -133,7 +141,7 @@ export class ProductsService {
     const updatedProduct = await this.productRepository.preload({
       id: idProduct,
       ...updateProductDto,
-      category: category || product.category, // Mantener la categoría actual si no se actualiza
+      categories: category ? [category] : product.categories, // Mantener las categorías actuales si no se actualizan
     });
 
     if (!updatedProduct) {
