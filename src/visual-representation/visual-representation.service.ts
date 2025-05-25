@@ -23,7 +23,7 @@ export class VisualRepresentationService {
     private readonly model3DRepository: Repository<Model3D>,
     @InjectRepository(ExperienceAR)
     private readonly experienceARRepository: Repository<ExperienceAR>,
-  ) {}
+  ) { }
 
   async create(createVisualRepresentationDto: CreateVisualRepresentationDto) {
     const { productId, type } = createVisualRepresentationDto;
@@ -196,8 +196,55 @@ export class VisualRepresentationService {
     return experiencesAR;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} visualRepresentation`;
+  async findOne(id: string) {
+    // Buscar la representación visual en la tabla base
+    const visualRepresentation = await this.visRepreRepository.findOne({
+      where: { id },
+      relations: ['product'],
+    });
+
+    if (!visualRepresentation) {
+      throw new BadRequestException('La representación visual no existe');
+    }
+
+    let result;
+
+    // Buscar los datos específicos según el tipo de representación
+    switch (visualRepresentation.type) {
+      case TypeRepresentation.IMAGE:
+        result = await this.imageRepository.findOne({
+          where: { id },
+          relations: ['product'],
+        });
+        break;
+
+      case TypeRepresentation.MODEL3D:
+        result = await this.model3DRepository.findOne({
+          where: { id },
+          relations: ['product'],
+        });
+        break;
+
+      case TypeRepresentation.EXPERIENCEAR:
+        result = await this.experienceARRepository.findOne({
+          where: { id },
+          relations: ['product'],
+        });
+        break;
+
+      default:
+        throw new BadRequestException(
+          `Tipo de representación ${visualRepresentation.type} no válido`,
+        );
+    }
+
+    if (!result) {
+      throw new BadRequestException(
+        'No se pudo encontrar la representación visual específica',
+      );
+    }
+
+    return result;
   }
 
   update(
@@ -207,7 +254,97 @@ export class VisualRepresentationService {
     return `This action updates a #${id} visualRepresentation`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} visualRepresentation`;
+  async remove(id: string) {
+    // Buscar la representación visual en la tabla base
+    const visualRepresentation = await this.visRepreRepository.findOne({
+      where: { id },
+      relations: ['product'],
+    });
+
+    if (!visualRepresentation) {
+      throw new BadRequestException('La representación visual no existe');
+    }
+
+    // Iniciar una transacción para garantizar la integridad de los datos
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      let result;
+
+      // Eliminar según el tipo de representación
+      switch (visualRepresentation.type) {
+        case TypeRepresentation.IMAGE:
+          const image = await this.imageRepository.findOne({
+            where: { id },
+          });
+          if (image) {
+            result = await this.imageRepository.remove(image);
+          }
+          break;
+
+        case TypeRepresentation.MODEL3D:
+          const model3D = await this.model3DRepository.findOne({
+            where: { id },
+          });
+          if (model3D) {
+            result = await this.model3DRepository.remove(model3D);
+          }
+          break;
+
+        case TypeRepresentation.EXPERIENCEAR:
+          const experienceAR = await this.experienceARRepository.findOne({
+            where: { id },
+          });
+          if (experienceAR) {
+            result = await this.experienceARRepository.remove(experienceAR);
+          }
+          break;
+
+        default:
+          throw new BadRequestException(
+            `Tipo de representación ${visualRepresentation.type} no válido`,
+          );
+      }
+
+      await queryRunner.commitTransaction();
+
+      return {
+        message: 'Representación visual eliminada correctamente',
+        deletedId: id,
+        type: visualRepresentation.type,
+      };
+    } catch (error) {
+      // Si hay un error, revertimos la transacción
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      // Liberamos el queryRunner en cualquier caso
+      await queryRunner.release();
+    }
+  }
+
+  public async findPrincipalImage(productId: string) {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new BadRequestException('El Producto no existe');
+    }
+
+    const principalImage = await this.imageRepository.findOne({
+      where: {
+        product: { id: productId },
+        isPrincipal: true
+      },
+    });
+
+    if (!principalImage) {
+      throw new BadRequestException('No se encontró una imagen principal para este producto');
+    }
+
+    return principalImage;
   }
 }

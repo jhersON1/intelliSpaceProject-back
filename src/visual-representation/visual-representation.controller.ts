@@ -19,7 +19,7 @@ import { ValidRoles } from '../auth/interfaces/valid-roles.interface';
 export class VisualRepresentationController {
   constructor(
     private readonly visualRepresentationService: VisualRepresentationService,
-  ) {}
+  ) { }
 
   @Post()
   @Auth(ValidRoles.VENDOR)
@@ -30,9 +30,13 @@ export class VisualRepresentationController {
   }
 
   @Get('images/:productId')
-  @Auth(ValidRoles.VENDOR)
   findAllImages(@Param('productId', ParseUUIDPipe) productId: string) {
     return this.visualRepresentationService.findAllImages(productId);
+  }
+
+  @Get('principal-image/:productId')
+  findPrincipalImage(@Param('productId', ParseUUIDPipe) productId: string) {
+    return this.visualRepresentationService.findPrincipalImage(productId);
   }
 
   @Get('images-model3D/:productId')
@@ -49,8 +53,8 @@ export class VisualRepresentationController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.visualRepresentationService.findOne(+id);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.visualRepresentationService.findOne(id);
   }
 
   @Patch(':id')
@@ -65,7 +69,8 @@ export class VisualRepresentationController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.visualRepresentationService.remove(+id);
+  @Auth(ValidRoles.VENDOR)
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.visualRepresentationService.remove(id);
   }
 }
