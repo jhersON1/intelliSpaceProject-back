@@ -116,10 +116,11 @@ export class VisualRepresentationService {
     dto: CreateVisualRepresentationDto,
     product: Product,
   ) {
-    const { format, texture, scale, url } = dto;
+    const { format, texture, scale, url, urlIOS3D } = dto;
 
     const model3D = this.model3DRepository.create({
       url,
+      urlIOS3D,
       format,
       texture,
       scale,
@@ -134,10 +135,11 @@ export class VisualRepresentationService {
     dto: CreateVisualRepresentationDto,
     product: Product,
   ) {
-    const { instructions, devicerequirements, url } = dto;
+    const { instructions, devicerequirements, url, urlIOSAR } = dto;
 
     const experienceAR = this.experienceARRepository.create({
       url,
+      urlIOSAR,
       instructions,
       devicerequirements: devicerequirements as string[],
       product,

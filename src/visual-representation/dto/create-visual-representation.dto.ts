@@ -63,6 +63,12 @@ export class CreateVisualRepresentationDto {
   @ValidateIf((o) => o.type === TypeRepresentation.MODEL3D)
   scale: Record<string, number>;
 
+  @IsString()
+  @IsOptional()
+  @IsUrl()
+  @ValidateIf((o) => o.type === TypeRepresentation.MODEL3D)
+  urlIOS3D?: string;
+
   // Campos específicos de ExperienceAR
   @IsString()
   @IsOptional()
@@ -73,4 +79,10 @@ export class CreateVisualRepresentationDto {
   @IsString({ each: true })
   @ValidateIf((o) => o.type === TypeRepresentation.EXPERIENCEAR)
   devicerequirements: string[];
+
+  @IsString()
+  @IsOptional()
+  @IsUrl()
+  @ValidateIf((o) => o.type === TypeRepresentation.EXPERIENCEAR)
+  urlIOSAR?: string;
 }
