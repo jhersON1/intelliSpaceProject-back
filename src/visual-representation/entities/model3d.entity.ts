@@ -14,4 +14,7 @@ export class Model3D extends VisualRepresentation {
 
   @Column('json')
   scale: object;
+
+  @Column('text', { nullable: true })
+  urlIOS3D?: string;
 }

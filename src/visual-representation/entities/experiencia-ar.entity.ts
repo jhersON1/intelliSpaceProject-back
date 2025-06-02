@@ -8,4 +8,7 @@ export class ExperienceAR extends VisualRepresentation {
 
   @Column('text', { array: true })
   devicerequirements: string[];
+
+  @Column('text', { nullable: true })
+  urlIOSAR?: string;
 }
