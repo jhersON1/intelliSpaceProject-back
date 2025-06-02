@@ -39,14 +39,13 @@ export class VisualRepresentationController {
     return this.visualRepresentationService.findPrincipalImage(productId);
   }
 
-  @Get('images-model3D/:productId')
-  @Auth(ValidRoles.VENDOR)
-  findAllImagesByModel3D(@Param('productId', ParseUUIDPipe) productId: string) {
+  @Get('model3D/:productId')
+  findModel3D(@Param('productId', ParseUUIDPipe) productId: string) {
     return this.visualRepresentationService.findAllModel3D(productId);
   }
 
-  @Get('images-experienceAR/:productId')
-  findAllImagesByExperienceAR(
+  @Get('experienceAR/:productId')
+  findExperienceAR(
     @Param('productId', ParseUUIDPipe) productId: string,
   ) {
     return this.visualRepresentationService.findAllExperienceAR(productId);
@@ -58,12 +57,13 @@ export class VisualRepresentationController {
   }
 
   @Patch(':id')
+  @Auth(ValidRoles.VENDOR)
   update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateVisualRepresentationDto: UpdateVisualRepresentationDto,
   ) {
     return this.visualRepresentationService.update(
-      +id,
+      id,
       updateVisualRepresentationDto,
     );
   }
