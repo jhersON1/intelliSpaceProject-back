@@ -7,6 +7,7 @@ import { ProductsModule } from './products/products.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ConnectionCloudinaryModule } from './connection-cloudinary/connection-cloudinary.module';
 import { VisualRepresentationModule } from './visual-representation/visual-representation.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { VisualRepresentationModule } from './visual-representation/visual-repre
     CategoriesModule,
     ConnectionCloudinaryModule,
     VisualRepresentationModule,
+    AnalyticsModule,
   ],
   controllers: [],
   providers: [],
