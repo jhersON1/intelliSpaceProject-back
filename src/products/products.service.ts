@@ -12,6 +12,7 @@ import { Repository } from 'typeorm';
 import { Vendor } from '../auth/entities/vendor.entity';
 import { Category } from '../categories/entities/category.entity';
 import { PaginationDto } from '../common/dtos/pagination.dto';
+import { AnalyticsService } from '../analytics/services/analytics.service';
 
 @Injectable()
 export class ProductsService {
@@ -22,6 +23,7 @@ export class ProductsService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async create(userId: string, createProductDto: CreateProductDto) {
@@ -76,6 +78,25 @@ export class ProductsService {
     return products;
   }
 
+  async findAllWithQueuePriority(paginationDto: PaginationDto) {
+    const { limit = 10, offset = 0 } = paginationDto;
+    
+    // Búsqueda inteligente: productos ordenados por factor de utilización y disponibilidad
+    const products = await this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.categories', 'categories')
+      .leftJoinAndSelect('product.analytics', 'analytics')
+      .where('product.stock > 0') // Solo productos disponibles
+      .orderBy('analytics.utilizationFactor', 'DESC') // Priorizar productos con mayor demanda relativa
+      .addOrderBy('product.stock', 'ASC') // Productos con poco stock primero
+      .addOrderBy('product.datePublication', 'DESC') // Productos más nuevos
+      .take(limit)
+      .skip(offset)
+      .getMany();
+
+    return products;
+  }
+
   async findAllProductsVendor(id: string, paginationDto: PaginationDto) {
     const { limit = 10, offset = 0 } = paginationDto;
     const products = await this.productRepository.find({
@@ -120,6 +141,9 @@ export class ProductsService {
       );
     }
 
+    // Guardar stock anterior para tracking
+    const previousStock = product.stock;
+
     // Si se está actualizando la categoría, validarla
     let category;
     if (updateProductDto.idCategory) {
@@ -141,7 +165,7 @@ export class ProductsService {
     const updatedProduct = await this.productRepository.preload({
       id: idProduct,
       ...updateProductDto,
-      categories: category ? [category] : product.categories, // Mantener las categorías actuales si no se actualizan
+      categories: category ? [category] : product.categories,
     });
 
     if (!updatedProduct) {
@@ -152,10 +176,43 @@ export class ProductsService {
 
     await this.productRepository.save(updatedProduct);
 
+    // Tracking de cambio de stock
+    const newStock = updateProductDto.stock !== undefined ? updateProductDto.stock : previousStock;
+    if (newStock !== previousStock) {
+      await this.trackStockChange(idProduct, previousStock, newStock);
+    }
+
     const { vendor, ...result } = updatedProduct;
     console.log(updateProductDto);
 
     return result;
+  }
+
+  private async trackStockChange(productId: string, previousStock: number, newStock: number) {
+    try {
+      let changeType: 'REPOSITION' | 'SALE' | 'ADJUSTMENT' | 'DEPLETION';
+      
+      if (newStock > previousStock) {
+        changeType = 'REPOSITION'; // Aumento de stock
+      } else if (newStock === 0) {
+        changeType = 'DEPLETION'; // Stock agotado
+      } else if (newStock < previousStock) {
+        changeType = 'SALE'; // Disminución por venta
+      } else {
+        changeType = 'ADJUSTMENT'; // Ajuste manual
+      }
+
+      await this.analyticsService.trackStockChange({
+        productId,
+        previousStock,
+        newStock,
+        changeType,
+        notes: `Cambio automático de stock: ${previousStock} → ${newStock}`
+      });
+    } catch (error) {
+      console.error('Error en tracking de stock:', error);
+      // No fallar la operación principal por errores de tracking
+    }
   }
 
   async remove(id: string) {

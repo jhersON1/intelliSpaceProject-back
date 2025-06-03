@@ -11,7 +11,9 @@ import {
   ManyToMany,
   ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
+  JoinColumn,
 } from 'typeorm';
 
 @Entity('product')
@@ -69,6 +71,22 @@ export class Product {
     (VisualRepresentation) => VisualRepresentation.product,
   )
   visualRepresentations: VisualRepresentation[];
+  // Nuevas relaciones para Analytics
+  @OneToOne('ProductAnalytics', 'product', { 
+    cascade: true 
+  })
+  @JoinColumn()
+  analytics: any;
+
+  @OneToMany('StockHistory', 'product', { 
+    cascade: true 
+  })
+  stockHistory: any[];
+
+  @OneToMany('ClickTracking', 'product', { 
+    cascade: true 
+  })
+  clickTracking: any[];
 
   @BeforeInsert()
   insertDateRegistrationProduct() {
