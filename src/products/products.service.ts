@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateProductDto } from './dto/create-product.dto';
+import { CreateProductDto, ProductStatus } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
@@ -142,7 +142,36 @@ export class ProductsService {
     }
 
     // Guardar stock anterior para tracking
-    const previousStock = product.stock;
+    const previousStock = product.stock;    // ✅ LÓGICA DE ESTADO Y STOCK
+    let finalStock = updateProductDto.stock !== undefined ? updateProductDto.stock : previousStock;
+    let finalState = updateProductDto.state || product.state;    // Si el estado es "Agotado", forzar stock a 0
+    if (finalState === ProductStatus.AGOTADO) {
+      finalStock = 0;
+      console.log('🔄 Estado "Agotado" detectado - Forzando stock a 0');
+    }
+    
+    // Si el estado es "Disponible", validar que stock > 0
+    if (finalState === ProductStatus.DISPONIBLE && finalStock === 0) {
+      throw new BadRequestException(
+        'No se puede establecer estado "Disponible" con stock 0. Use estado "Agotado" o aumente el stock.'
+      );
+    }
+
+    // Actualizar el DTO con los valores finales
+    updateProductDto.stock = finalStock;
+    if (finalState === ProductStatus.AGOTADO || finalState === ProductStatus.DISPONIBLE) {
+      updateProductDto.state = finalState;
+    }
+
+    console.log('📊 STOCK UPDATE LOGIC:', {
+      productId: idProduct,
+      previousStock,
+      requestedStock: updateProductDto.stock,
+      finalStock,
+      requestedState: updateProductDto.state,
+      finalState,
+      autoAdjusted: finalState === ProductStatus.AGOTADO && updateProductDto.stock !== 0
+    });
 
     // Si se está actualizando la categoría, validarla
     let category;
@@ -172,45 +201,65 @@ export class ProductsService {
       throw new NotFoundException(
         `Producto con ID: ${idProduct} no encontrado después de preload`,
       );
-    }
+    }    await this.productRepository.save(updatedProduct);
 
-    await this.productRepository.save(updatedProduct);
-
-    // Tracking de cambio de stock
-    const newStock = updateProductDto.stock !== undefined ? updateProductDto.stock : previousStock;
-    if (newStock !== previousStock) {
-      await this.trackStockChange(idProduct, previousStock, newStock);
+    // Tracking de cambio de stock - usar el stock final calculado
+    if (finalStock !== previousStock) {
+      await this.trackStockChange(idProduct, previousStock, finalStock);
     }
 
     const { vendor, ...result } = updatedProduct;
     console.log(updateProductDto);
 
     return result;
-  }
-
-  private async trackStockChange(productId: string, previousStock: number, newStock: number) {
+  }  private async trackStockChange(productId: string, previousStock: number, newStock: number) {
     try {
       let changeType: 'REPOSITION' | 'SALE' | 'ADJUSTMENT' | 'DEPLETION';
       
-      if (newStock > previousStock) {
+      // ✅ LÓGICA CORREGIDA: El orden importa
+      if (newStock === 0 && previousStock > 0) {
+        changeType = 'DEPLETION'; // Stock agotado (prioridad más alta)
+      } else if (newStock > previousStock) {
         changeType = 'REPOSITION'; // Aumento de stock
-      } else if (newStock === 0) {
-        changeType = 'DEPLETION'; // Stock agotado
       } else if (newStock < previousStock) {
         changeType = 'SALE'; // Disminución por venta
       } else {
-        changeType = 'ADJUSTMENT'; // Ajuste manual
-      }
+        changeType = 'ADJUSTMENT'; // Ajuste manual (no debería pasar, pero por seguridad)
+      }      // ✅ LOGGING PARA DEBUGGING
+      console.log('🔄 TRACKING STOCK CHANGE:', {
+        productId,
+        previousStock,
+        newStock,
+        changeType,
+        stockDifference: newStock - previousStock,
+        willTriggerRecalculation: changeType === 'DEPLETION' || changeType === 'REPOSITION' || 
+                                  (changeType === 'SALE' && Math.abs(newStock - previousStock) >= 10),
+        timestamp: new Date().toISOString()
+      });
 
-      await this.analyticsService.trackStockChange({
+      const stockRecord = await this.analyticsService.trackStockChange({
         productId,
         previousStock,
         newStock,
         changeType,
         notes: `Cambio automático de stock: ${previousStock} → ${newStock}`
       });
+
+      console.log('✅ STOCK CHANGE TRACKED SUCCESSFULLY:', {
+        recordId: stockRecord.id,
+        productId,
+        changeType,
+        stockChange: stockRecord.stockChange
+      });
+
     } catch (error) {
-      console.error('Error en tracking de stock:', error);
+      console.error('❌ ERROR EN TRACKING DE STOCK:', {
+        productId,
+        previousStock,
+        newStock,
+        error: error.message,
+        stack: error.stack
+      });
       // No fallar la operación principal por errores de tracking
     }
   }

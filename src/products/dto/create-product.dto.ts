@@ -13,7 +13,7 @@ import {
   IsUUID,
 } from 'class-validator';
 
-enum ProductStatus {
+export enum ProductStatus {
   AGOTADO = 'Agotado',
   DISPONIBLE = 'Disponible',
 }
@@ -47,9 +47,8 @@ export class CreateProductDto {
   @IsPositive()
   @IsOptional()
   price?: number;
-
   @IsInt()
-  @IsPositive()
+  @Min(0, { message: 'El stock no puede ser negativo' })
   @IsOptional()
   stock?: number;
 
