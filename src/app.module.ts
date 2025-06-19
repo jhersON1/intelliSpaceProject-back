@@ -8,6 +8,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { ConnectionCloudinaryModule } from './connection-cloudinary/connection-cloudinary.module';
 import { VisualRepresentationModule } from './visual-representation/visual-representation.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { SemanticSearchModule } from './semantic-search/semantic-search.module'; // NUEVO
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     ConnectionCloudinaryModule,
     VisualRepresentationModule,
     AnalyticsModule,
+    SemanticSearchModule, // NUEVO MÓDULO AGREGADO
   ],
   controllers: [],
   providers: [],
