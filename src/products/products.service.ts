@@ -1,8 +1,11 @@
+// src/products/products.service.ts
 import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -13,6 +16,7 @@ import { Vendor } from '../auth/entities/vendor.entity';
 import { Category } from '../categories/entities/category.entity';
 import { PaginationDto } from '../common/dtos/pagination.dto';
 import { AnalyticsService } from '../analytics/services/analytics.service';
+import { EmbeddingService } from '../semantic-search/services/embedding.service'; // NUEVO
 
 @Injectable()
 export class ProductsService {
@@ -24,6 +28,8 @@ export class ProductsService {
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
     private readonly analyticsService: AnalyticsService,
+    @Inject(forwardRef(() => EmbeddingService)) // NUEVO
+    private readonly embeddingService: EmbeddingService,
   ) {}
 
   async create(userId: string, createProductDto: CreateProductDto) {
@@ -37,10 +43,10 @@ export class ProductsService {
       }
 
       // Buscar y validar la categoría
-      const categoryId = Array.isArray(createProductDto.idCategory) 
-        ? createProductDto.idCategory[0] 
+      const categoryId = Array.isArray(createProductDto.idCategory)
+        ? createProductDto.idCategory[0]
         : createProductDto.idCategory;
-        
+
       const category = await this.categoryRepository.findOne({
         where: { id: categoryId },
       });
@@ -59,6 +65,17 @@ export class ProductsService {
       });
 
       const savedProduct = await this.productRepository.save(product);
+
+      // 🆕 GENERAR EMBEDDING AUTOMÁTICAMENTE
+      try {
+        await this.embeddingService.processProduct(savedProduct.id);
+      } catch (embeddingError) {
+        console.warn(
+          `Warning: No se pudo generar embedding para producto ${savedProduct.id}:`,
+          embeddingError.message,
+        );
+        // No fallar la creación del producto por errores de embedding
+      }
 
       const { vendor: _, ...productDelVendor } = savedProduct;
 
@@ -80,7 +97,7 @@ export class ProductsService {
 
   async findAllWithQueuePriority(paginationDto: PaginationDto) {
     const { limit = 10, offset = 0 } = paginationDto;
-    
+
     // Búsqueda inteligente: productos ordenados por factor de utilización y disponibilidad
     const products = await this.productRepository
       .createQueryBuilder('product')
@@ -147,10 +164,10 @@ export class ProductsService {
     // Si se está actualizando la categoría, validarla
     let category;
     if (updateProductDto.idCategory) {
-      const categoryId = Array.isArray(updateProductDto.idCategory) 
-        ? updateProductDto.idCategory[0] 
+      const categoryId = Array.isArray(updateProductDto.idCategory)
+        ? updateProductDto.idCategory[0]
         : updateProductDto.idCategory;
-        
+
       category = await this.categoryRepository.findOne({
         where: { id: categoryId },
       });
@@ -176,22 +193,39 @@ export class ProductsService {
 
     await this.productRepository.save(updatedProduct);
 
+    // 🆕 ACTUALIZAR EMBEDDING AUTOMÁTICAMENTE
+    try {
+      await this.embeddingService.processProduct(idProduct);
+    } catch (embeddingError) {
+      console.warn(
+        `Warning: No se pudo actualizar embedding para producto ${idProduct}:`,
+        embeddingError.message,
+      );
+      // No fallar la actualización del producto por errores de embedding
+    }
+
     // Tracking de cambio de stock
-    const newStock = updateProductDto.stock !== undefined ? updateProductDto.stock : previousStock;
+    const newStock =
+      updateProductDto.stock !== undefined
+        ? updateProductDto.stock
+        : previousStock;
     if (newStock !== previousStock) {
       await this.trackStockChange(idProduct, previousStock, newStock);
     }
 
     const { vendor, ...result } = updatedProduct;
-    console.log(updateProductDto);
 
     return result;
   }
 
-  private async trackStockChange(productId: string, previousStock: number, newStock: number) {
+  private async trackStockChange(
+    productId: string,
+    previousStock: number,
+    newStock: number,
+  ) {
     try {
       let changeType: 'REPOSITION' | 'SALE' | 'ADJUSTMENT' | 'DEPLETION';
-      
+
       if (newStock > previousStock) {
         changeType = 'REPOSITION'; // Aumento de stock
       } else if (newStock === 0) {
@@ -207,7 +241,7 @@ export class ProductsService {
         previousStock,
         newStock,
         changeType,
-        notes: `Cambio automático de stock: ${previousStock} → ${newStock}`
+        notes: `Cambio automático de stock: ${previousStock} → ${newStock}`,
       });
     } catch (error) {
       console.error('Error en tracking de stock:', error);
@@ -225,6 +259,17 @@ export class ProductsService {
     }
 
     const deletedProduct = { ...product };
+
+    // 🆕 ELIMINAR EMBEDDING AUTOMÁTICAMENTE
+    try {
+      await this.embeddingService.deleteProductEmbedding(id);
+    } catch (embeddingError) {
+      console.warn(
+        `Warning: No se pudo eliminar embedding para producto ${id}:`,
+        embeddingError.message,
+      );
+      // No fallar la eliminación del producto por errores de embedding
+    }
 
     await this.productRepository.remove(product);
 

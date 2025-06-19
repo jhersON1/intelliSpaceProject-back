@@ -1,4 +1,5 @@
 import { VisualRepresentation } from './../../visual-representation/entities/visual-representation.entity';
+import { ProductEmbedding } from '../../semantic-search/entities/product-embedding.entity';
 import { insertDateRegistration } from 'src/utils/insert-date';
 import { Vendor } from '../../auth/entities/vendor.entity';
 import { Category } from '../../categories/entities/category.entity';
@@ -62,9 +63,14 @@ export class Product {
   @JoinTable({
     name: 'product_categories',
     joinColumn: { name: 'productId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'categoryId', referencedColumnName: 'id' }
+    inverseJoinColumn: { name: 'categoryId', referencedColumnName: 'id' },
   })
   categories: Category[];
+
+  @OneToOne(() => ProductEmbedding, (embedding) => embedding.product, {
+    cascade: true,
+  })
+  embedding: ProductEmbedding;
 
   @OneToMany(
     () => VisualRepresentation,
@@ -72,19 +78,19 @@ export class Product {
   )
   visualRepresentations: VisualRepresentation[];
   // Nuevas relaciones para Analytics
-  @OneToOne('ProductAnalytics', 'product', { 
-    cascade: true 
+  @OneToOne('ProductAnalytics', 'product', {
+    cascade: true,
   })
   @JoinColumn()
   analytics: any;
 
-  @OneToMany('StockHistory', 'product', { 
-    cascade: true 
+  @OneToMany('StockHistory', 'product', {
+    cascade: true,
   })
   stockHistory: any[];
 
-  @OneToMany('ClickTracking', 'product', { 
-    cascade: true 
+  @OneToMany('ClickTracking', 'product', {
+    cascade: true,
   })
   clickTracking: any[];
 
