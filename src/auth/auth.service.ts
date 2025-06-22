@@ -29,9 +29,19 @@ export class AuthService {
     private readonly consumerRepository: Repository<Consumer>,
     private readonly jwtService: JwtService,
   ) {}
-
   async create(createUserDto: CreateUserDto) {
     const { email, password, rol } = createUserDto;
+
+    // Debug: log para verificar qué llega al backend
+    console.log('🔍 DEBUG Backend - Datos recibidos en create:', {
+      createUserDto,
+      email,
+      rol,
+      expectedConsumer: 'CONSUMER',
+      expectedVendor: 'VENDOR',
+      isConsumer: rol === UserRole.CONSUMER,
+      isVendor: rol === UserRole.VENDOR
+    });
 
     const existingUser = await this.userRepository.findOne({
       where: { email },
@@ -45,6 +55,7 @@ export class AuthService {
 
     // Crear el usuario según el rol
     if (rol === UserRole.CONSUMER) {
+      console.log('✅ Creando CONSUMER');
       const consumer = await this.createConsumer(createUserDto, hashedPassword);
       return {
         user: this.parseUser(consumer),
@@ -53,6 +64,7 @@ export class AuthService {
     }
 
     if (rol === UserRole.VENDOR) {
+      console.log('✅ Creando VENDOR');
       const vendor = await this.createVendor(createUserDto, hashedPassword);
       return {
         user: this.parseUser(vendor),

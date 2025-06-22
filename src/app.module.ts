@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
@@ -8,20 +8,18 @@ import { CategoriesModule } from './categories/categories.module';
 import { ConnectionCloudinaryModule } from './connection-cloudinary/connection-cloudinary.module';
 import { VisualRepresentationModule } from './visual-representation/visual-representation.module';
 import { AnalyticsModule } from './analytics/analytics.module';
-import { SemanticSearchModule } from './semantic-search/semantic-search.module'; // NUEVO
+import { SemanticSearchModule } from './semantic-search/semantic-search.module';
+import { MessagingModule } from './messaging/messaging.module';
+import { databaseConfig } from './config/database.config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: +(process.env.DB_PORT ?? 5440),
-      database: process.env.DB_NAME,
-      username: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      autoLoadEntities: true,
-      synchronize: true,
+    ConfigModule.forRoot({ 
+      isGlobal: true
+    }),
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: () => databaseConfig(),
     }),
     AuthModule,
     CommonModule,
@@ -30,7 +28,8 @@ import { SemanticSearchModule } from './semantic-search/semantic-search.module';
     ConnectionCloudinaryModule,
     VisualRepresentationModule,
     AnalyticsModule,
-    SemanticSearchModule, // NUEVO MÓDULO AGREGADO
+    SemanticSearchModule,
+    MessagingModule,
   ],
   controllers: [],
   providers: [],
