@@ -2,6 +2,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Consumer } from '../auth/entities/consumer.entity';
 import { Vendor } from '../auth/entities/vendor.entity';
+import { Admin } from '../auth/entities/admin.entity';
 import { Product } from '../products/entities/product.entity';
 import { Category } from '../categories/entities/category.entity';
 import { Message } from '../messaging/entities/message.entity';
@@ -13,6 +14,7 @@ import { ExperienceAR } from '../visual-representation/entities/experiencia-ar.e
 import { ProductAnalytics } from '../analytics/entities/product-analytics.entity';
 import { StockHistory } from '../analytics/entities/stock-history.entity';
 import { ClickTracking } from '../analytics/entities/click-tracking.entity';
+import { SystemLog } from '../common/entities/system-log.entity';
 
 export const databaseConfig = (): TypeOrmModuleOptions => ({
   type: 'postgres',
@@ -20,11 +22,11 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
   port: parseInt(process.env.DB_PORT || '5432', 10),
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME || 'TesloDB',
-  entities: [
+  database: process.env.DB_NAME || 'TesloDB',  entities: [
     User, 
     Consumer, 
-    Vendor, 
+    Vendor,
+    Admin,
     Product, 
     Category, 
     Message,
@@ -35,7 +37,8 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
     ExperienceAR,
     ProductAnalytics,
     StockHistory,
-    ClickTracking
+    ClickTracking,
+    SystemLog
   ],
   synchronize: process.env.NODE_ENV !== 'production',
   logging: process.env.NODE_ENV === 'development',

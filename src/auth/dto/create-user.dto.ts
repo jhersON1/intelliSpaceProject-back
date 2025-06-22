@@ -15,6 +15,7 @@ import {
 export enum UserRole {
   CONSUMER = 'CONSUMER',
   VENDOR = 'VENDOR',
+  ADMIN = 'ADMIN',
 }
 
 export enum TypeVendor {
