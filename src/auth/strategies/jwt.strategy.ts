@@ -12,21 +12,32 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {
     super({
-      secretOrKey: configService.get<string>('JWT_SECRET') as string,
+      secretOrKey: configService.get<string>('JWT_SECRET') || 'SARAMAMBICHE123',
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
     });
   }
-
   async validate(payload: JwtPayload): Promise<User> {
     const { id } = payload;
 
-    const user = await this.userRepository.findOneBy({ id });
+    if (!id) {
+      throw new UnauthorizedException('Token payload is invalid');
+    }
+
+    const user = await this.userRepository.findOne({ 
+      where: { id },
+      select: ['id', 'email', 'name', 'lastname', 'rol']
+    });
 
     if (!user) {
       throw new UnauthorizedException('Token not valid');
+    }
+
+    if (!user.id) {
+      throw new UnauthorizedException('User data is incomplete');
     }
 
     return user;
