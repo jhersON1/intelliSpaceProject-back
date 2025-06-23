@@ -4,8 +4,7 @@
   "description": "",
   "author": "",
   "private": true,
-  "license": "UNLICENSED",
-  "scripts": {
+  "license": "UNLICENSED",  "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -17,7 +16,12 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "typeorm": "typeorm-ts-node-commonjs",
+    "migration:generate": "npm run typeorm -- migration:generate src/migrations/Migration -d src/config/database.config.ts",
+    "migration:run": "npm run typeorm -- migration:run -d src/config/database.config.ts",
+    "migration:revert": "npm run typeorm -- migration:revert -d src/config/database.config.ts",
+    "schema:sync": "npm run typeorm -- schema:sync -d src/config/database.config.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -39,7 +43,8 @@
     "pg": "^8.14.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.21"
+    "typeorm": "^0.3.21",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -55,6 +60,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.15.32",
     "@types/supertest": "^6.0.2",
+    "@types/uuid": "^10.0.0",
     "eslint": "^9.18.0",
     "globals": "^16.0.0",
     "jest": "^29.7.0",

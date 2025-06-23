@@ -31,8 +31,7 @@ export class User {
     // default: () => 'CURRENT_TIMESTAMP',
   })
   dateRegister: Date;
-
-  @Column({ type: 'enum', enum: ['CONSUMER', 'VENDOR'] }) // Opcional, porque el `discriminator` ya diferencia los tipos
+  @Column({ type: 'enum', enum: ['CONSUMER', 'VENDOR', 'ADMIN'] }) // Agregado ADMIN
   rol: string;
 
   @BeforeInsert()

@@ -10,6 +10,7 @@ import { VisualRepresentationModule } from './visual-representation/visual-repre
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SemanticSearchModule } from './semantic-search/semantic-search.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { AdminModule } from './admin/admin.module';
 import { databaseConfig } from './config/database.config';
 
 @Module({
@@ -30,6 +31,7 @@ import { databaseConfig } from './config/database.config';
     AnalyticsModule,
     SemanticSearchModule,
     MessagingModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [],

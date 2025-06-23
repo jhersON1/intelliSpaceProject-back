@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Consumer, User, Vendor } from './entities';
+import { Consumer, User, Vendor, Admin } from './entities';
 import * as bcrypt from 'bcrypt';
 import {
   ChangePasswordDto,
@@ -27,6 +27,8 @@ export class AuthService {
     private readonly vendorRepository: Repository<Vendor>,
     @InjectRepository(Consumer)
     private readonly consumerRepository: Repository<Consumer>,
+    @InjectRepository(Admin)
+    private readonly adminRepository: Repository<Admin>,
     private readonly jwtService: JwtService,
   ) {}
   async create(createUserDto: CreateUserDto) {
@@ -49,9 +51,7 @@ export class AuthService {
 
     if (existingUser) {
       throw new BadRequestException(`El usuario con email ${email} ya existe`);
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
+    }    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Crear el usuario según el rol
     if (rol === UserRole.CONSUMER) {
@@ -69,6 +69,15 @@ export class AuthService {
       return {
         user: this.parseUser(vendor),
         token: this.getJwtToken({ email: vendor.email, id: vendor.id, rol: vendor.rol }),
+      };
+    }
+
+    if (rol === UserRole.ADMIN) {
+      console.log('✅ Creando ADMIN');
+      const admin = await this.createAdmin(createUserDto, hashedPassword);
+      return {
+        user: this.parseUser(admin),
+        token: this.getJwtToken({ email: admin.email, id: admin.id, rol: admin.rol }),
       };
     }
 
@@ -177,7 +186,6 @@ export class AuthService {
     }
     return true;
   }
-
   private async createConsumer(
     createConsumerDto: CreateUserDto,
     password: string,
@@ -191,5 +199,18 @@ export class AuthService {
       preferences: preferences || {},
     });
     return await this.consumerRepository.save(consumer);
+  }
+
+  private async createAdmin(
+    createAdminDto: CreateUserDto,
+    password: string,
+  ) {
+    const admin = this.adminRepository.create({
+      ...createAdminDto,
+      password: password,
+      isActive: true,
+      notes: 'Admin creado para gestión de logs del sistema',
+    });
+    return await this.adminRepository.save(admin);
   }
 }
