@@ -39,9 +39,8 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
     StockHistory,
     ClickTracking,
     SystemLog
-  ],
-  synchronize: process.env.NODE_ENV !== 'production',
+  ],  synchronize: true, // TEMPORAL: crear tablas en producción
   logging: process.env.NODE_ENV === 'development',
   dropSchema: false,
-  migrationsRun: false,
+  migrationsRun: false, // Deshabilitado temporalmente
 });
