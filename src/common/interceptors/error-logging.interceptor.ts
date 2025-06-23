@@ -17,6 +17,7 @@ interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     email: string;
+    role?: string;
     [key: string]: any;
   };
 }
@@ -57,7 +58,6 @@ export class ErrorLoggingInterceptor implements NestInterceptor {
     // Todos los otros errores no HTTP
     return true;
   }
-
   private async logError(error: any, request: AuthenticatedRequest): Promise<void> {
     const isHttpException = error instanceof HttpException;
     const status = isHttpException ? error.getStatus() : 500;
@@ -67,16 +67,51 @@ export class ErrorLoggingInterceptor implements NestInterceptor {
 
     const level = status >= 500 ? LogLevel.ERROR : LogLevel.WARN;
 
+    // Determinar contexto de negocio basado en el endpoint
+    const businessContext = this.determineBusinessContext(request);
+
     await this.systemLogger.logError({
       level,
       message,
       stackTrace: error.stack,
       httpStatus: status,
+      businessContext,
       errorContext: {
         errorType: error.constructor.name,
         isHttpException,
         originalMessage: error.message,
       },
     }, request);
+  }
+
+  /**
+   * Determina el contexto de negocio basado en el endpoint y método
+   */
+  private determineBusinessContext(request: AuthenticatedRequest): string {
+    const { method, originalUrl } = request;
+    const url = originalUrl || request.url || '';
+
+    // Mapear endpoints a contextos de negocio
+    if (url.includes('/auth/login')) return 'User Login';
+    if (url.includes('/auth/register')) return 'User Registration';
+    if (url.includes('/auth/')) return 'Authentication';
+    
+    if (url.includes('/products') && method === 'POST') return 'Creating Product';
+    if (url.includes('/products') && method === 'PUT') return 'Updating Product';
+    if (url.includes('/products') && method === 'DELETE') return 'Deleting Product';
+    if (url.includes('/products')) return 'Product Management';
+    
+    if (url.includes('/categories') && method === 'POST') return 'Creating Category';
+    if (url.includes('/categories') && method === 'PUT') return 'Updating Category';
+    if (url.includes('/categories') && method === 'DELETE') return 'Deleting Category';
+    if (url.includes('/categories')) return 'Category Management';
+    
+    if (url.includes('/semantic-search')) return 'Semantic Search';
+    if (url.includes('/visual-representation')) return 'Visual Representation';
+    if (url.includes('/analytics')) return 'Analytics';
+    if (url.includes('/messaging')) return 'Messaging';
+    if (url.includes('/admin')) return 'Admin Operations';
+
+    return `${method} ${url}`;
   }
 }

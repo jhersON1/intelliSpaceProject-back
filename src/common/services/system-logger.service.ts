@@ -3,12 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThanOrEqual, LessThan } from 'typeorm';
 import { SystemLog, LogLevel } from '../entities/system-log.entity';
 import { Request } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 
 // Extender el tipo Request para incluir user
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     email: string;
+    role?: string;
     [key: string]: any;
   };
 }
@@ -23,9 +25,13 @@ export interface LogData {
   userAgent?: string;
   userId?: string;
   userEmail?: string;
+  userRole?: string;
+  businessContext?: string;
+  entityIds?: Record<string, any>;
   requestData?: Record<string, any>;
   errorContext?: Record<string, any>;
   httpStatus?: number;
+  traceId?: string;
 }
 
 @Injectable()
@@ -33,14 +39,16 @@ export class SystemLoggerService {
   constructor(
     @InjectRepository(SystemLog)
     private readonly systemLogRepository: Repository<SystemLog>,
-  ) {}
-  /**
+  ) {}  /**
    * Registra un error en el sistema
    */
   async logError(data: LogData, req?: AuthenticatedRequest): Promise<SystemLog> {
+    const traceId = data.traceId || this.generateTraceId();
+    
     const logEntry = this.systemLogRepository.create({
       ...data,
       level: LogLevel.ERROR,
+      traceId,
       ...this.extractRequestInfo(req),
     });
 
@@ -49,21 +57,25 @@ export class SystemLoggerService {
     // También logear en consola para desarrollo
     console.error('🔴 SYSTEM ERROR LOGGED:', {
       id: savedLog.id,
+      traceId: savedLog.traceId,
       message: data.message,
       endpoint: data.endpoint,
       userId: data.userId,
+      businessContext: data.businessContext,
       timestamp: savedLog.createdAt,
     });
 
     return savedLog;
-  }
-  /**
+  }  /**
    * Registra un warning en el sistema
    */
   async logWarning(data: LogData, req?: AuthenticatedRequest): Promise<SystemLog> {
+    const traceId = data.traceId || this.generateTraceId();
+    
     const logEntry = this.systemLogRepository.create({
       ...data,
       level: LogLevel.WARN,
+      traceId,
       ...this.extractRequestInfo(req),
     });
 
@@ -72,15 +84,16 @@ export class SystemLoggerService {
     // También logear en consola para desarrollo
     console.warn('🟡 SYSTEM WARNING LOGGED:', {
       id: savedLog.id,
+      traceId: savedLog.traceId,
       message: data.message,
       endpoint: data.endpoint,
       userId: data.userId,
+      businessContext: data.businessContext,
       timestamp: savedLog.createdAt,
     });
 
     return savedLog;
-  }
-  /**
+  }  /**
    * Registra un error desde una excepción
    */
   async logException(
@@ -93,6 +106,8 @@ export class SystemLoggerService {
       level: LogLevel.ERROR,
       message,
       stackTrace: error.stack,
+      businessContext: context?.businessContext || 'Exception occurred',
+      entityIds: context?.entityIds,
       errorContext: {
         errorName: error.name,
         errorMessage: error.message,
@@ -137,7 +152,7 @@ export class SystemLoggerService {
       });
     }    if (filters.search) {
       queryBuilder.andWhere(
-        '(log.message ILIKE :search OR log.endpoint ILIKE :search OR log.userEmail ILIKE :search)',
+        '(log.message ILIKE :search OR log.endpoint ILIKE :search OR log.userEmail ILIKE :search OR log.traceId ILIKE :search OR log.businessContext ILIKE :search)',
         { search: `%${filters.search}%` }
       );
     }
@@ -229,8 +244,7 @@ export class SystemLoggerService {
       logsToday,
       logsThisWeek,
     };
-  }
-  /**
+  }  /**
    * Extrae información del request
    */
   private extractRequestInfo(req?: AuthenticatedRequest) {
@@ -247,8 +261,10 @@ export class SystemLoggerService {
       requestData: Object.keys(requestData).length > 0 ? requestData : undefined,
       userId: req.user?.id || undefined,
       userEmail: req.user?.email || undefined,
+      userRole: req.user?.role || undefined,
     };
   }
+
   /**
    * Obtiene la IP real del cliente
    */
@@ -261,5 +277,36 @@ export class SystemLoggerService {
       req.headers['x-real-ip']?.toString() ||
       'unknown'
     );
+  }
+
+  /**
+   * Genera un trace ID único para cada request
+   */
+  private generateTraceId(): string {
+    return `trace_${Date.now()}_${uuidv4().split('-')[0]}`;
+  }
+
+  /**
+   * Método helper para logging con contexto de negocio
+   */
+  async logWithBusinessContext(
+    level: LogLevel,
+    message: string,
+    businessContext: string,
+    req?: AuthenticatedRequest,
+    entityIds?: Record<string, any>,
+    additionalContext?: Record<string, any>
+  ): Promise<SystemLog> {
+    const logData: LogData = {
+      level,
+      message,
+      businessContext,
+      entityIds,
+      errorContext: additionalContext,
+    };
+
+    return level === LogLevel.ERROR 
+      ? this.logError(logData, req)
+      : this.logWarning(logData, req);
   }
 }

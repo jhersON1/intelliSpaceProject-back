@@ -35,11 +35,11 @@ export class AdminService {
       offset,
     };
 
-    const result = await this.systemLogger.getLogs(parsedFilters);
-      // Convertir a formato esperado por frontend
+    const result = await this.systemLogger.getLogs(parsedFilters);      // Convertir a formato esperado por frontend
     return {
       logs: result.logs.map(log => ({
         id: log.id,
+        traceId: log.traceId,
         level: log.level,
         message: log.message,
         context: log.endpoint, // Usar endpoint como contexto
@@ -49,6 +49,11 @@ export class AdminService {
         endpoint: log.endpoint,
         method: log.method,
         userId: log.userId,
+        userRole: log.userRole,
+        businessContext: log.businessContext,
+        entityIds: log.entityIds,
+        stackTrace: log.stackTrace,
+        errorContext: log.errorContext,
         timestamp: log.createdAt,
         resolved: log.isResolved,
         resolvedAt: log.resolvedAt,
