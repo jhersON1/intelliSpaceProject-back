@@ -46,12 +46,12 @@ export interface ProductTrendAnalysis {
 
 @Injectable()
 export class HoltWintersService {
-  // Parámetros por defecto optimizados para e-commerce
+  // 🧪 PARÁMETROS DE PRUEBA - Períodos de 5 minutos para testing
   private readonly defaultParameters: HoltWintersParameters = {
     alpha: 0.4,    // Suavizado de nivel - respuesta moderada a cambios
     beta: 0.3,     // Suavizado de tendencia - captura tendencias graduales
     gamma: 0.2,    // Suavizado estacional - patrones estacionales suaves
-    seasonalPeriods: 7, // Ciclo semanal (7 días)
+    seasonalPeriods: 5, // 🧪 TESTING: 5 períodos de 5 minutos (25 min total)
     trendWeight: 2.0    // Amplificador de tendencia para ranking
   };
 
@@ -66,18 +66,19 @@ export class HoltWintersService {
 
   /**
    * Calcula el modelo Holt-Winters completo para un producto
+   * 🧪 TESTING: Usando períodos de 5 minutos
    */
   async calculateHoltWinters(
     productId: string, 
-    analysisPeriodDays: number = 30,
+    analysisPeriodMinutes: number = 60, // 🧪 TESTING: 60 minutos en lugar de 30 días
     customParameters?: Partial<HoltWintersParameters>
   ): Promise<ProductTrendAnalysis> {
-    console.log(`🔮 INICIANDO ANÁLISIS HOLT-WINTERS para producto: ${productId}`);
+    console.log(`🔮 INICIANDO ANÁLISIS HOLT-WINTERS para producto: ${productId} (${analysisPeriodMinutes} minutos)`);
     
     const parameters = { ...this.defaultParameters, ...customParameters };
     
-    // Obtener datos históricos de demanda
-    const demandHistory = await this.getDemandHistory(productId, analysisPeriodDays);
+    // Obtener datos históricos de demanda por períodos de 5 minutos
+    const demandHistory = await this.getDemandHistoryByMinutes(productId, analysisPeriodMinutes);
     
     if (demandHistory.length < parameters.seasonalPeriods + 2) {
       console.log(`⚠️ Insufficient data for Holt-Winters: ${demandHistory.length} periods, need at least ${parameters.seasonalPeriods + 2}`);
@@ -163,6 +164,56 @@ export class HoltWintersService {
     }
 
     console.log(`📈 Historial generado: ${demandHistory.length} períodos, total clicks: ${demandHistory.reduce((sum, d) => sum + d.observedDemand, 0)}`);
+    
+    return demandHistory;
+  }
+
+  /**
+   * 🧪 TESTING: Obtiene el historial de demanda (clicks) por períodos de 5 minutos
+   */
+  private async getDemandHistoryByMinutes(productId: string, totalMinutes: number): Promise<DemandPeriod[]> {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMinutes(endDate.getMinutes() - totalMinutes);
+
+    console.log(`📊 Obteniendo historial de demanda: ${totalMinutes} minutos (períodos de 5 min)`);
+
+    // Obtener clicks agrupados por períodos de 5 minutos
+    const clicksData = await this.clickRepository
+      .createQueryBuilder('click')
+      .select('click.createdAt', 'createdAt')
+      .where('click.product.id = :productId', { productId })
+      .andWhere('click.createdAt BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .andWhere('click.interactionType = :type', { type: 'CLICK' })
+      .orderBy('click.createdAt', 'ASC')
+      .getMany();
+
+    // Crear serie temporal completa en períodos de 5 minutos
+    const demandHistory: DemandPeriod[] = [];
+    const periodDurationMinutes = 5;
+    const currentDate = new Date(startDate);
+    let period = 1;
+
+    while (currentDate < endDate) {
+      const periodEnd = new Date(currentDate.getTime() + periodDurationMinutes * 60000);
+      
+      // Contar clicks en este período de 5 minutos
+      const clicksInPeriod = clicksData.filter(click => {
+        const clickTime = new Date(click.createdAt);
+        return clickTime >= currentDate && clickTime < periodEnd;
+      }).length;
+      
+      demandHistory.push({
+        period,
+        date: new Date(currentDate),
+        observedDemand: clicksInPeriod
+      });
+
+      currentDate.setMinutes(currentDate.getMinutes() + periodDurationMinutes);
+      period++;
+    }
+
+    console.log(`📈 Historial generado: ${demandHistory.length} períodos de 5 min, total clicks: ${demandHistory.reduce((sum, d) => sum + d.observedDemand, 0)}`);
     
     return demandHistory;
   }
@@ -272,17 +323,18 @@ export class HoltWintersService {
 
   /**
    * Clasifica la tendencia según el sistema definido
+   * 🧪 TESTING: Umbrales ajustados para períodos de minutos
    */
   private classifyTrend(components: HoltWintersComponents): { label: string; icon: string } {
     const ranking = components.trendRanking;
     const trend = components.trend;
 
-    // Sistema de clasificación adaptado para e-commerce
-    if (ranking >= 50 && trend > 5) {
+    // 🧪 TESTING: Sistema de clasificación ajustado para períodos de minutos
+    if (ranking >= 5 && trend > 0.5) {  // Reducido de 50 y 5
       return { label: "🔥 TENDENCIA HOT", icon: "🔥" };
-    } else if (ranking >= 25 && trend > 2) {
+    } else if (ranking >= 2 && trend > 0.2) {  // Reducido de 25 y 2
       return { label: "📈 EN TENDENCIA", icon: "📈" };
-    } else if (ranking >= 10 || Math.abs(trend) <= 2) {
+    } else if (ranking >= 1 || Math.abs(trend) <= 0.2) {  // Reducido de 10 y 2
       return { label: "➡️ ESTABLE", icon: "➡️" };
     } else {
       return { label: "📉 PERDIENDO POPULARIDAD", icon: "📉" };
@@ -323,29 +375,30 @@ export class HoltWintersService {
 
   /**
    * Obtiene productos ordenados por tendencia (ranking)
+   * 🧪 TESTING: Usando períodos de minutos
    */
   async getProductsByTrend(limit: number = 10): Promise<ProductTrendAnalysis[]> {
-    console.log(`🏆 Obteniendo top ${limit} productos por tendencia Holt-Winters`);
+    console.log(`🏆 Obteniendo top ${limit} productos por tendencia Holt-Winters (TESTING MODE)`);
 
-    // Obtener todos los productos con actividad reciente
+    // 🧪 TESTING: Obtener productos con actividad en la última hora
     const products = await this.productRepository
       .createQueryBuilder('product')
       .innerJoin('product.clicks', 'click')
       .where('click.createdAt >= :date', { 
-        date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Últimos 30 días
+        date: new Date(Date.now() - 60 * 60 * 1000) // 🧪 TESTING: Última 1 hora
       })
       .groupBy('product.id')
-      .having('COUNT(click.id) >= :minClicks', { minClicks: 5 }) // Mínimo 5 clicks
+      .having('COUNT(click.id) >= :minClicks', { minClicks: 1 }) // 🧪 TESTING: Mínimo 1 click
       .getMany();
 
-    console.log(`📊 Analizando ${products.length} productos activos`);
+    console.log(`📊 Analizando ${products.length} productos activos (última hora)`);
 
     // Calcular Holt-Winters para cada producto
     const analyses: ProductTrendAnalysis[] = [];
     
     for (const product of products) {
       try {
-        const analysis = await this.calculateHoltWinters(product.id);
+        const analysis = await this.calculateHoltWinters(product.id, 60); // 🧪 60 minutos
         analyses.push(analysis);
       } catch (error) {
         console.error(`Error calculando Holt-Winters para ${product.id}:`, error);

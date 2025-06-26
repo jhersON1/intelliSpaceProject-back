@@ -445,11 +445,16 @@ export class AnalyticsController {  constructor(
       return {
         total: trendingProducts.length,
         products: trendingProducts,
-        lastUpdate: new Date()
+        generatedAt: new Date(),
+        algorithm: 'Holt-Winters'
       };
     } catch (error) {
       console.error('❌ Error obteniendo productos en tendencia:', error);
       return {
+        total: 0,
+        products: [],
+        generatedAt: new Date(),
+        algorithm: 'Holt-Winters',
         error: 'No se pudieron obtener los productos en tendencia',
         details: error.message
       };
