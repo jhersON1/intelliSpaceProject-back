@@ -1,4 +1,4 @@
-import { Product } from 'src/products/entities/product.entity';
+import { Product } from '../../products/entities/product.entity';
 import {
   Column,
   Entity,
@@ -7,16 +7,13 @@ import {
   Tree,
   TreeParent,
   TreeChildren,
-  CreateDateColumn,
-  BeforeInsert,
-  BeforeUpdate,
   Check,
   JoinColumn,
 } from 'typeorm';
 
 @Entity('category')
 @Tree('closure-table')
-@Check(`"level" <= 3`) // Limitar profundidad máxima
+@Check(`"level" <= 3`)
 export class Category {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -39,23 +36,10 @@ export class Category {
   products: Product[];
 
   @TreeParent()
-  @JoinColumn({ name: 'parentId' }) // explícitamente definir la columna
+  @JoinColumn({ name: 'parentId' })
   parent: Category | null;
 
   @TreeChildren()
   children: Category[];
 
-  // // Métodos
-  // @BeforeInsert()
-  // @BeforeUpdate()
-  // setMetadata() {
-  //   // Calcular nivel y ruta
-  //   if (!this.parent) {
-  //     this.level = 0;
-  //     this.path = this.name;
-  //   } else {
-  //     this.level = (this.parent.level || 0) + 1;
-  //     this.path = `${this.parent.path} > ${this.name}`;
-  //   }
-  // }
 }

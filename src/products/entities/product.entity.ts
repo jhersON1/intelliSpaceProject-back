@@ -1,6 +1,6 @@
 import { VisualRepresentation } from './../../visual-representation/entities/visual-representation.entity';
 import { ProductEmbedding } from '../../semantic-search/entities/product-embedding.entity';
-import { insertDateRegistration } from 'src/utils/insert-date';
+import { insertDateRegistration } from '../../utils/insert-date';
 import { Vendor } from '../../auth/entities/vendor.entity';
 import { Category } from '../../categories/entities/category.entity';
 import {

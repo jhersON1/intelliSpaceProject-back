@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AnalyticsService, ClickTrackingDto, StockUpdateDto } from './services/analytics.service';
 import { QueueTheoryService } from './services/queue-theory.service';
+import { HoltWintersService } from './services/holt-winters.service';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { ValidRoles } from '../auth/interfaces/valid-roles.interface';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -20,10 +21,10 @@ import { ClickTracking } from './entities/click-tracking.entity';
 import { StockHistory } from './entities/stock-history.entity';
 
 @Controller('analytics')
-export class AnalyticsController {
-  constructor(
+export class AnalyticsController {  constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly queueTheoryService: QueueTheoryService,
+    private readonly holtWintersService: HoltWintersService,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
     @InjectRepository(ClickTracking)
@@ -403,6 +404,268 @@ export class AnalyticsController {
       return {
         error: 'Failed to track click',
         details: error.message
+      };
+    }
+  }
+
+  // ===============================
+  // 🔮 NUEVOS ENDPOINTS HOLT-WINTERS
+  // ===============================
+
+  /**
+   * 🔮 NUEVO: Obtiene análisis de tendencia Holt-Winters para un producto específico
+   */
+  @Get('product/:id/trend-analysis')
+  async getProductTrendAnalysis(@Param('id', ParseUUIDPipe) productId: string) {
+    console.log(`🔮 ENDPOINT: Análisis de tendencia Holt-Winters para producto ${productId}`);
+    
+    try {
+      const analysis = await this.analyticsService.getProductTrendAnalysis(productId);
+      console.log(`✅ Análisis de tendencia obtenido: ${analysis.trendLabel}`);
+      return analysis;
+    } catch (error) {
+      console.error(`❌ Error en análisis de tendencia para ${productId}:`, error);
+      return {
+        error: 'No se pudo obtener el análisis de tendencia',
+        details: error.message
+      };
+    }
+  }
+
+  /**
+   * 🔮 NUEVO: Obtiene productos ordenados por tendencia (Trending Products)
+   */
+  @Get('trending-products')
+  async getTrendingProducts(@Query('limit') limit?: number) {
+    console.log(`🏆 ENDPOINT: Productos en tendencia - Límite: ${limit || 10}`);
+    
+    try {
+      const trendingProducts = await this.analyticsService.getTrendingProducts(limit || 10);
+      console.log(`✅ ${trendingProducts.length} productos en tendencia obtenidos`);
+      return {
+        total: trendingProducts.length,
+        products: trendingProducts,
+        lastUpdate: new Date()
+      };
+    } catch (error) {
+      console.error('❌ Error obteniendo productos en tendencia:', error);
+      return {
+        error: 'No se pudieron obtener los productos en tendencia',
+        details: error.message
+      };
+    }
+  }
+
+  /**
+   * 🔮 NUEVO: Actualiza análisis de tendencia para un producto específico
+   */
+  @Post('product/:id/update-trend')
+  @Auth(ValidRoles.VENDOR)
+  async updateProductTrend(@Param('id', ParseUUIDPipe) productId: string) {
+    console.log(`🔄 ENDPOINT: Actualizar análisis de tendencia para producto ${productId}`);
+    
+    try {
+      const updatedAnalysis = await this.analyticsService.updateProductTrend(productId);
+      console.log(`✅ Tendencia actualizada: ${updatedAnalysis.trendLabel}`);
+      return {
+        message: 'Análisis de tendencia actualizado exitosamente',
+        analysis: updatedAnalysis
+      };
+    } catch (error) {
+      console.error(`❌ Error actualizando tendencia para ${productId}:`, error);
+      return {
+        error: 'No se pudo actualizar el análisis de tendencia',
+        details: error.message
+      };
+    }
+  }
+
+  /**
+   * 🔮 NUEVO: Dashboard de tendencias para vendedor con Holt-Winters
+   */
+  @Get('vendor-trend-dashboard')
+  @Auth(ValidRoles.VENDOR)
+  async getVendorTrendDashboard(@GetUser() user: User) {
+    console.log(`🔮 ENDPOINT: Dashboard de tendencias para vendedor ${user.id}`);
+    
+    try {
+      const trendDashboard = await this.analyticsService.getVendorTrendDashboard(user.id);
+      console.log(`✅ Dashboard de tendencias generado:`, {
+        totalProducts: trendDashboard.totalProducts,
+        avgTrendRanking: trendDashboard.averageTrendRanking,
+        categoryBreakdown: trendDashboard.categoryBreakdown
+      });
+      return trendDashboard;
+    } catch (error) {
+      console.error(`❌ Error generando dashboard de tendencias para ${user.id}:`, error);
+      return {
+        error: 'No se pudo generar el dashboard de tendencias',
+        details: error.message
+      };
+    }
+  }
+
+  /**
+   * 🔮 NUEVO: Análisis completo combinando Queue Theory + Holt-Winters
+   */
+  @Get('product/:id/complete-analysis')
+  async getCompleteProductAnalysis(@Param('id', ParseUUIDPipe) productId: string) {
+    console.log(`🎯 ENDPOINT: Análisis completo (Queue Theory + Holt-Winters) para producto ${productId}`);
+    
+    try {
+      const completeAnalysis = await this.analyticsService.getCompleteProductAnalysis(productId);
+      console.log(`✅ Análisis completo generado:`, {
+        queueStatus: completeAnalysis.queueTheory.status,
+        trendLabel: completeAnalysis.trendAnalysis.label,
+        overallStatus: completeAnalysis.synthesis.overallStatus
+      });
+      return completeAnalysis;
+    } catch (error) {
+      console.error(`❌ Error en análisis completo para ${productId}:`, error);
+      return {
+        error: 'No se pudo completar el análisis del producto',
+        details: error.message
+      };
+    }
+  }
+
+  /**
+   * 🔮 NUEVO: Endpoint directo para obtener ranking de productos por Holt-Winters
+   */
+  @Get('holt-winters-ranking')
+  async getHoltWintersRanking(@Query('limit') limit?: number) {
+    console.log(`🏆 ENDPOINT: Ranking Holt-Winters - Límite: ${limit || 20}`);
+    
+    try {
+      const ranking = await this.holtWintersService.getProductsByTrend(limit || 20);
+      
+      // Formatear para ranking simple
+      const formattedRanking = ranking.map((analysis, index) => ({
+        position: index + 1,
+        productId: analysis.productId,
+        title: analysis.productTitle,
+        trendRanking: Number(analysis.currentComponents.trendRanking.toFixed(2)),
+        trendSlope: Number(analysis.currentComponents.trend.toFixed(2)),
+        level: Number(analysis.currentComponents.level.toFixed(2)),
+        label: analysis.trendLabel,
+        icon: analysis.trendIcon,
+        forecast: Number(analysis.forecastNextPeriod.toFixed(2))
+      }));
+
+      console.log(`✅ Ranking Holt-Winters generado: ${formattedRanking.length} productos`);
+      
+      return {
+        totalProducts: formattedRanking.length,
+        ranking: formattedRanking,
+        lastUpdate: new Date(),
+        algorithm: 'Holt-Winters Exponential Smoothing',
+        description: 'Productos ordenados por tendencia predictiva de demanda'
+      };
+    } catch (error) {
+      console.error('❌ Error generando ranking Holt-Winters:', error);
+      return {
+        error: 'No se pudo generar el ranking Holt-Winters',
+        details: error.message
+      };
+    }
+  }
+
+  /**
+   * 🔮 NUEVO: Comparación directa Queue Theory vs Holt-Winters
+   */
+  @Get('product/:id/algorithm-comparison')
+  async getAlgorithmComparison(@Param('id', ParseUUIDPipe) productId: string) {
+    console.log(`⚖️ ENDPOINT: Comparación de algoritmos para producto ${productId}`);
+    
+    try {
+      // Obtener métricas de Queue Theory
+      const queueMetrics = await this.queueTheoryService.calculateQueueMetrics(productId);
+      
+      // Obtener análisis Holt-Winters
+      const trendAnalysis = await this.holtWintersService.calculateHoltWinters(productId);
+
+      const comparison = {
+        productId,
+        productTitle: trendAnalysis.productTitle,
+        
+        queueTheory: {
+          algorithm: 'M/M/1 Queue Theory',
+          purpose: 'Gestión de inventario y capacidad',
+          metrics: {
+            lambda: queueMetrics.lambda,
+            mu: queueMetrics.mu,
+            rho: queueMetrics.rho,
+            status: queueMetrics.status
+          },
+          focus: 'Equilibrio demanda vs capacidad de reposición',
+          timeHorizon: 'Presente (estado actual del sistema)'
+        },
+        
+        holtWinters: {
+          algorithm: 'Holt-Winters Exponential Smoothing',
+          purpose: 'Predicción de tendencias y ranking',
+          metrics: {
+            level: trendAnalysis.currentComponents.level,
+            trend: trendAnalysis.currentComponents.trend,
+            seasonal: trendAnalysis.currentComponents.seasonal,
+            ranking: trendAnalysis.currentComponents.trendRanking,
+            forecast: trendAnalysis.forecastNextPeriod
+          },
+          focus: 'Evolución temporal de la demanda',
+          timeHorizon: 'Futuro (predicción basada en tendencias)'
+        },
+        
+        recommendation: this.generateAlgorithmRecommendation(queueMetrics, trendAnalysis),
+        lastUpdate: new Date()
+      };
+
+      console.log(`✅ Comparación de algoritmos generada`);
+      return comparison;
+
+    } catch (error) {
+      console.error(`❌ Error en comparación de algoritmos para ${productId}:`, error);
+      return {
+        error: 'No se pudo generar la comparación de algoritmos',
+        details: error.message
+      };
+    }
+  }
+
+  /**
+   * 🔮 HELPER: Genera recomendación basada en ambos algoritmos
+   */
+  private generateAlgorithmRecommendation(queueMetrics: any, trendAnalysis: any): any {
+    const queueStatus = queueMetrics.status;
+    const trend = trendAnalysis.currentComponents.trend;
+    const ranking = trendAnalysis.currentComponents.trendRanking;
+
+    if (queueStatus === 'CRITICO' && trend > 0) {
+      return {
+        priority: 'URGENT',
+        action: 'REPONER STOCK INMEDIATAMENTE',
+        reason: 'Queue Theory indica capacidad insuficiente Y Holt-Winters muestra tendencia creciente',
+        timeline: 'Próximas 24-48 horas'
+      };
+    } else if (ranking > 30 && queueStatus !== 'CRITICO') {
+      return {
+        priority: 'HIGH',
+        action: 'PROMOCIONAR Y PREPARAR STOCK',
+        reason: 'Holt-Winters indica alta tendencia pero sistema de colas estable',
+        timeline: 'Próxima semana'
+      };
+    } else if (queueStatus === 'CRITICO' && trend < 0) {
+      return {
+        priority: 'MEDIUM',
+        action: 'EVALUAR SITUACIÓN',
+        reason: 'Queue Theory crítico pero Holt-Winters muestra declive - investigar causas',
+        timeline: 'Próximos 3-5 días'
+      };
+    } else {
+      return {
+        priority: 'LOW',
+        action: 'MONITOREO RUTINARIO',
+        reason: 'Ambos algoritmos indican situación controlada',
+        timeline: 'Revisión semanal'
       };
     }
   }

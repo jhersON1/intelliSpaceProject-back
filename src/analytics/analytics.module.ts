@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './services/analytics.service';
 import { QueueTheoryService } from './services/queue-theory.service';
+import { HoltWintersService } from './services/holt-winters.service';
 import { ProductAnalytics } from './entities/product-analytics.entity';
 import { StockHistory } from './entities/stock-history.entity';
 import { ClickTracking } from './entities/click-tracking.entity';
@@ -11,7 +12,7 @@ import { AuthModule } from '../auth/auth.module';
 
 @Module({
   controllers: [AnalyticsController],
-  providers: [AnalyticsService, QueueTheoryService],
+  providers: [AnalyticsService, QueueTheoryService, HoltWintersService],
   imports: [
     TypeOrmModule.forFeature([
       ProductAnalytics,
@@ -24,7 +25,8 @@ import { AuthModule } from '../auth/auth.module';
   exports: [
     TypeOrmModule,
     AnalyticsService,
-    QueueTheoryService
+    QueueTheoryService,
+    HoltWintersService
   ]
 })
 export class AnalyticsModule {}

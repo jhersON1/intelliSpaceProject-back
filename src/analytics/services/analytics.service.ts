@@ -6,6 +6,7 @@ import { StockHistory } from '../entities/stock-history.entity';
 import { ProductAnalytics } from '../entities/product-analytics.entity';
 import { Product } from '../../products/entities/product.entity';
 import { QueueTheoryService } from './queue-theory.service';
+import { HoltWintersService, ProductTrendAnalysis } from './holt-winters.service';
 
 export interface ClickTrackingDto {
   productId: string;
@@ -25,8 +26,7 @@ export interface StockUpdateDto {
 }
 
 @Injectable()
-export class AnalyticsService {
-  constructor(
+export class AnalyticsService {  constructor(
     @InjectRepository(ClickTracking)
     private readonly clickRepository: Repository<ClickTracking>,
     @InjectRepository(StockHistory)
@@ -36,6 +36,7 @@ export class AnalyticsService {
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
     private readonly queueTheoryService: QueueTheoryService,
+    private readonly holtWintersService: HoltWintersService,
   ) {}
 
   /**
@@ -354,5 +355,340 @@ export class AnalyticsService {
     });
 
     return lastReposition ? lastReposition.createdAt : null;
+  }
+
+  /**
+   * 🔮 NUEVO: Obtiene análisis de tendencia Holt-Winters para un producto
+   */
+  async getProductTrendAnalysis(productId: string): Promise<ProductTrendAnalysis> {
+    console.log(`🔮 OBTENIENDO ANÁLISIS DE TENDENCIA HOLT-WINTERS para producto: ${productId}`);
+    
+    return await this.holtWintersService.calculateHoltWinters(productId);
+  }
+
+  /**
+   * 🔮 NUEVO: Obtiene productos ordenados por tendencia (Trending Products)
+   */
+  async getTrendingProducts(limit: number = 10): Promise<ProductTrendAnalysis[]> {
+    console.log(`🏆 OBTENIENDO PRODUCTOS EN TENDENCIA (Holt-Winters) - Límite: ${limit}`);
+    
+    return await this.holtWintersService.getProductsByTrend(limit);
+  }
+
+  /**
+   * 🔮 NUEVO: Actualiza análisis de tendencia para un producto específico
+   */
+  async updateProductTrend(productId: string): Promise<ProductTrendAnalysis> {
+    console.log(`🔄 ACTUALIZANDO ANÁLISIS DE TENDENCIA para producto: ${productId}`);
+    
+    return await this.holtWintersService.updateProductTrend(productId);
+  }
+
+  /**
+   * 🔮 NUEVO: Dashboard de tendencias para vendedor con Holt-Winters
+   */
+  async getVendorTrendDashboard(vendorId: string): Promise<any> {
+    console.log(`🔮 OBTENIENDO DASHBOARD DE TENDENCIAS PARA VENDEDOR: ${vendorId}`);
+    
+    const products = await this.productRepository.find({
+      where: { vendor: { id: vendorId } },
+      select: ['id', 'title']
+    });
+
+    console.log(`📦 ANALIZANDO TENDENCIAS DE ${products.length} PRODUCTOS`);
+
+    // Analizar tendencias para cada producto del vendedor
+    const trendAnalyses: ProductTrendAnalysis[] = [];
+    
+    for (const product of products) {
+      try {
+        const analysis = await this.holtWintersService.calculateHoltWinters(product.id);
+        trendAnalyses.push(analysis);
+      } catch (error) {
+        console.warn(`⚠️ Error analizando tendencia de ${product.id}:`, error.message);
+      }
+    }
+
+    // Clasificar productos por categorías de tendencia
+    const hotProducts = trendAnalyses.filter(a => a.trendLabel.includes('HOT'));
+    const trendingProducts = trendAnalyses.filter(a => a.trendLabel.includes('EN TENDENCIA'));
+    const stableProducts = trendAnalyses.filter(a => a.trendLabel.includes('ESTABLE'));
+    const decliningProducts = trendAnalyses.filter(a => a.trendLabel.includes('PERDIENDO'));
+
+    // Calcular métricas agregadas
+    const avgTrendRanking = trendAnalyses.length > 0 
+      ? trendAnalyses.reduce((sum, a) => sum + a.currentComponents.trendRanking, 0) / trendAnalyses.length
+      : 0;
+
+    const avgTrendSlope = trendAnalyses.length > 0
+      ? trendAnalyses.reduce((sum, a) => sum + a.currentComponents.trend, 0) / trendAnalyses.length
+      : 0;
+
+    // Top 5 productos con mejor tendencia
+    const topTrendingProducts = trendAnalyses
+      .sort((a, b) => b.currentComponents.trendRanking - a.currentComponents.trendRanking)
+      .slice(0, 5)
+      .map(a => ({
+        id: a.productId,
+        title: a.productTitle,
+        trendRanking: Number(a.currentComponents.trendRanking.toFixed(2)),
+        trendSlope: Number(a.currentComponents.trend.toFixed(2)),
+        level: Number(a.currentComponents.level.toFixed(2)),
+        label: a.trendLabel,
+        icon: a.trendIcon,
+        forecast: Number(a.forecastNextPeriod.toFixed(2))
+      }));
+
+    const dashboard = {
+      vendorId,
+      totalProducts: products.length,
+      productsAnalyzed: trendAnalyses.length,
+      
+      // Métricas agregadas
+      averageTrendRanking: Number(avgTrendRanking.toFixed(2)),
+      averageTrendSlope: Number(avgTrendSlope.toFixed(2)),
+      
+      // Categorización de productos
+      categoryBreakdown: {
+        hot: hotProducts.length,
+        trending: trendingProducts.length, 
+        stable: stableProducts.length,
+        declining: decliningProducts.length
+      },
+      
+      // Top productos
+      topTrendingProducts,
+      
+      // Productos por categoría con detalles
+      productsByCategory: {
+        hot: hotProducts.map(this.mapTrendAnalysisForDashboard),
+        trending: trendingProducts.map(this.mapTrendAnalysisForDashboard),
+        stable: stableProducts.slice(0, 3).map(this.mapTrendAnalysisForDashboard), // Limitar estables
+        declining: decliningProducts.map(this.mapTrendAnalysisForDashboard)
+      },
+      
+      // Alertas y recomendaciones
+      alerts: this.generateTrendAlerts(trendAnalyses),
+      
+      lastUpdate: new Date()
+    };
+
+    console.log(`✅ DASHBOARD DE TENDENCIAS GENERADO:`, {
+      totalProducts: dashboard.totalProducts,
+      productsAnalyzed: dashboard.productsAnalyzed,
+      avgTrendRanking: dashboard.averageTrendRanking,
+      categoryBreakdown: dashboard.categoryBreakdown
+    });
+
+    return dashboard;
+  }
+
+  /**
+   * 🔮 HELPER: Mapea análisis de tendencia para dashboard
+   */
+  private mapTrendAnalysisForDashboard(analysis: ProductTrendAnalysis): any {
+    return {
+      id: analysis.productId,
+      title: analysis.productTitle,
+      trendRanking: Number(analysis.currentComponents.trendRanking.toFixed(2)),
+      trendSlope: Number(analysis.currentComponents.trend.toFixed(2)),
+      level: Number(analysis.currentComponents.level.toFixed(2)),
+      label: analysis.trendLabel,
+      icon: analysis.trendIcon,
+      forecast: Number(analysis.forecastNextPeriod.toFixed(2)),
+      periodsAnalyzed: analysis.periodsAnalyzed
+    };
+  }
+
+  /**
+   * 🔮 HELPER: Genera alertas basadas en análisis de tendencias
+   */
+  private generateTrendAlerts(analyses: ProductTrendAnalysis[]): any[] {
+    const alerts: any[] = [];
+
+    // Alertas para productos en declive
+    const decliningProducts = analyses.filter(a => 
+      a.currentComponents.trend < -2 && a.currentComponents.level > 10
+    );
+
+    if (decliningProducts.length > 0) {
+      alerts.push({
+        type: 'warning',
+        title: 'Productos Perdiendo Popularidad',
+        message: `${decliningProducts.length} producto(s) muestran tendencia descendente significativa`,
+        products: decliningProducts.map(p => p.productTitle).slice(0, 3),
+        actionRequired: 'Revisar estrategia de marketing o promociones'
+      });
+    }
+
+    // Alertas para productos hot
+    const hotProducts = analyses.filter(a => 
+      a.currentComponents.trend > 5 && a.trendLabel.includes('HOT')
+    );
+
+    if (hotProducts.length > 0) {
+      alerts.push({
+        type: 'success',
+        title: 'Productos en Tendencia HOT',
+        message: `${hotProducts.length} producto(s) con crecimiento acelerado`,
+        products: hotProducts.map(p => p.productTitle).slice(0, 3),
+        actionRequired: 'Considerar aumentar stock y promocionar más'
+      });
+    }
+
+    // Alerta por falta de datos
+    const insufficientData = analyses.filter(a => a.periodsAnalyzed < 7);
+    
+    if (insufficientData.length > 0) {
+      alerts.push({
+        type: 'info',
+        title: 'Datos Insuficientes',
+        message: `${insufficientData.length} producto(s) necesitan más historial para análisis preciso`,
+        products: insufficientData.map(p => p.productTitle).slice(0, 3),
+        actionRequired: 'El análisis mejorará con más actividad'
+      });
+    }
+
+    return alerts;
+  }
+
+  /**
+   * 🔮 NUEVO: Análisis completo combinando Queue Theory + Holt-Winters
+   */
+  async getCompleteProductAnalysis(productId: string): Promise<any> {
+    console.log(`🎯 OBTENIENDO ANÁLISIS COMPLETO (Queue Theory + Holt-Winters) para: ${productId}`);
+
+    try {
+      // Obtener análisis de teoría de colas existente
+      const queueMetrics = await this.queueTheoryService.calculateQueueMetrics(productId);
+      
+      // Obtener análisis de tendencia Holt-Winters
+      const trendAnalysis = await this.holtWintersService.calculateHoltWinters(productId);
+      
+      // Obtener estadísticas básicas
+      const basicStats = await this.getProductStats(productId);
+
+      // Combinar análisis
+      const completeAnalysis = {
+        productId,
+        productTitle: trendAnalysis.productTitle,
+        lastUpdate: new Date(),
+
+        // Métricas de teoría de colas (gestión de inventario)
+        queueTheory: {
+          lambda: queueMetrics.lambda,
+          mu: queueMetrics.mu,
+          rho: queueMetrics.rho,
+          status: queueMetrics.status,
+          message: queueMetrics.message
+        },
+
+        // Análisis de tendencia Holt-Winters (predicción de demanda)
+        trendAnalysis: {
+          level: trendAnalysis.currentComponents.level,
+          trend: trendAnalysis.currentComponents.trend,
+          seasonal: trendAnalysis.currentComponents.seasonal,
+          trendRanking: trendAnalysis.currentComponents.trendRanking,
+          forecast: trendAnalysis.forecastNextPeriod,
+          label: trendAnalysis.trendLabel,
+          icon: trendAnalysis.trendIcon,
+          periodsAnalyzed: trendAnalysis.periodsAnalyzed
+        },
+
+        // Estadísticas básicas
+        basicStats: {
+          totalClicks: basicStats.totalClicks,
+          totalViews: basicStats.totalViews,
+          totalSearches: basicStats.totalSearches
+        },
+
+        // Síntesis y recomendaciones
+        synthesis: this.generateSynthesis(queueMetrics, trendAnalysis),
+        
+        // Datos históricos para gráficos
+        demandHistory: trendAnalysis.demandHistory.slice(-14) // Últimos 14 días
+      };
+
+      console.log(`✅ ANÁLISIS COMPLETO GENERADO:`, {
+        queueStatus: completeAnalysis.queueTheory.status,
+        trendLabel: completeAnalysis.trendAnalysis.label,
+        synthesis: completeAnalysis.synthesis.overallStatus
+      });
+
+      return completeAnalysis;
+
+    } catch (error) {
+      console.error(`❌ Error en análisis completo para ${productId}:`, error);
+      throw new Error(`No se pudo completar el análisis para el producto ${productId}`);
+    }
+  }
+
+  /**
+   * 🔮 HELPER: Genera síntesis combinando Queue Theory y Holt-Winters
+   */
+  private generateSynthesis(queueMetrics: any, trendAnalysis: ProductTrendAnalysis): any {
+    const queueStatus = queueMetrics.status;
+    const trend = trendAnalysis.currentComponents.trend;
+    const trendLabel = trendAnalysis.trendLabel;
+
+    let overallStatus: string;
+    let priority: 'HIGH' | 'MEDIUM' | 'LOW';
+    let recommendations: string[];
+
+    // Matriz de decisión combinada
+    if (queueStatus === 'CRITICO' && trend > 2) {
+      overallStatus = 'CRÍTICO - Alta demanda creciente, capacidad insuficiente';
+      priority = 'HIGH';
+      recommendations = [
+        'URGENTE: Incrementar stock inmediatamente',
+        'Aumentar frecuencia de reposiciones',
+        'Considerar promocionar debido a alta tendencia',
+        'Monitorear de cerca en las próximas 48 horas'
+      ];
+    } else if (queueStatus === 'CRITICO' && trend < -2) {
+      overallStatus = 'PRECAUCIÓN - Demanda alta pero decreciente';
+      priority = 'MEDIUM';
+      recommendations = [
+        'Reponer stock pero evaluar cantidades',
+        'Analizar causas de la tendencia decreciente',
+        'Considerar estrategias de retención de demanda',
+        'Monitorear evolución semanal'
+      ];
+    } else if (queueStatus === 'ESTABLE' && trend > 3) {
+      overallStatus = 'OPORTUNIDAD - Tendencia creciente, capacidad estable';
+      priority = 'HIGH';
+      recommendations = [
+        'Aprovechar momentum de crecimiento',
+        'Incrementar promoción del producto',
+        'Preparar stock adicional para demanda futura',
+        'Considerar expandir marketing'
+      ];
+    } else if (queueStatus === 'ESTABLE' && Math.abs(trend) <= 2) {
+      overallStatus = 'ÓPTIMO - Sistema equilibrado';
+      priority = 'LOW';
+      recommendations = [
+        'Mantener estrategia actual',
+        'Monitoreo rutinario',
+        'Buscar oportunidades de optimización menores'
+      ];
+    } else {
+      overallStatus = 'REVISAR - Situación mixta requiere atención';
+      priority = 'MEDIUM';
+      recommendations = [
+        'Análisis detallado de la situación',
+        'Evaluar factores externos',
+        'Ajustar estrategia según contexto específico'
+      ];
+    }
+
+    return {
+      overallStatus,
+      priority,
+      recommendations,
+      queueImpact: queueStatus,
+      trendImpact: trendLabel,
+      confidenceLevel: trendAnalysis.periodsAnalyzed >= 14 ? 'HIGH' : 
+                      trendAnalysis.periodsAnalyzed >= 7 ? 'MEDIUM' : 'LOW'
+    };
   }
 }

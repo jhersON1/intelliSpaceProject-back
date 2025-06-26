@@ -4,7 +4,7 @@ import { VisualRepresentationController } from './visual-representation.controll
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ExperienceAR, Image, Model3D, VisualRepresentation } from './entities';
 import { ProductsModule } from '../products/products.module';
-import { AuthModule } from 'src/auth/auth.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   controllers: [VisualRepresentationController],
